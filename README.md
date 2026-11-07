@@ -1,3 +1,416 @@
 [![ai-sdlc](https://github.com/HackTheWorld-Team/botathon-2026/actions/workflows/ai-sdlc.yml/badge.svg)](https://github.com/HackTheWorld-Team/botathon-2026/actions/workflows/ai-sdlc.yml)
 
-# botathon-2026
+# Botathon 2026 — Teletón: Automatización de Planificación y Gestión Asistencial
+
+**Qué:** MVP que automatiza la planificación asistencial de Teletón (hoy: Excel manual de 205 columnas).
+**Lectura:** 20–25 min. Este es el documento de contexto. Reglas y fórmulas completas: [`informe_tecnico_requerimientos.md`](informe_tecnico_requerimientos.md) (fuente de verdad).
+**Sprint:** vie 06-nov-2026 23:30 → **sáb 07-nov-2026 10:00** (~10,5 h). Equipo: 3 (1 líder + 2 técnicos). Blue Prism disponible.
+
+---
+
+## Índice
+
+1. [Problema](#1-problema)
+2. [Datos disponibles](#2-datos-disponibles)
+3. [Esquemas exactos](#3-esquemas-exactos)
+4. [Reglas de negocio (fórmulas)](#4-reglas-de-negocio-fórmulas)
+5. [KPIs (definiciones formales)](#5-kpis-definiciones-formales)
+6. [Requerimientos del MVP](#6-requerimientos-del-mvp)
+7. [Casos de demo (criterios de aceptación)](#7-casos-de-demo-criterios-de-aceptación)
+8. [Backlog priorizado](#8-backlog-priorizado)
+9. [Herramientas](#9-herramientas)
+10. [Plan de trabajo](#10-plan-de-trabajo)
+11. [Riesgos](#11-riesgos)
+12. [Decisiones pendientes](#12-decisiones-pendientes)
+13. [Mapa del repositorio](#13-mapa-del-repositorio)
+
+---
+
+## 1. Problema
+
+**Hoy:** la planificación mensual de atenciones se arma copiando/pegando entre 2 sistemas desconectados hacia 1 planilla Excel frágil.
+
+```mermaid
+flowchart LR
+    BUK["BUK\ncontratos · jornadas"] --> CP["copy/paste\nmanual"]
+    SIC["SIC\natenciones reales"] --> CP
+    CP --> XL["Excel 205 col\n× 476 filas"]
+    XL --> REP["metas · informes"]
+    style CP fill:#f66,color:#000
+```
+
+**Dolores (cada uno = un punto a atacar):**
+
+| # | Dolor | Consecuencia |
+|---|---|---|
+| 1 | Fórmulas rotas (`#REF!`), celdas combinadas | Fragilidad operacional |
+| 2 | Cambios marcados con colores, sin autoría/fecha | Sin trazabilidad ni versionado |
+| 3 | Parámetros estáticos; cambio de jornada no recalcula el futuro | Sin dinamismo; el pasado no queda congelado |
+| 4 | Herramientas inoperables para personas con discapacidad | Exclusión (punto social central del desafío) |
+
+**Escala verificada:** 3.123 filas de contrato · 462 profesionales únicos · 15 institutos · solo ene–jul 2026 en BUK (hay que proyectar ago–dic) · plan anual 692.706 atenciones · Meta de Gestión 623.435.
+
+**Solución en una línea:** bot Blue Prism (ingesta/validación/deltas) → motor de reglas (horas→atenciones) → dashboard web WCAG 2.1 AA (KPIs + parametrización).
+
+---
+
+## 2. Datos disponibles
+
+| Archivo | Rol | Estado |
+|---|---|---|
+| `Nac - Base contratos x mes.xlsx` | Input primario (reporte BUK real) | Presente |
+| `Nac - Planificación Asistencial x mes.xlsx` | Modelo actual + diccionario de reglas | Presente |
+| `SIC_Atenciones_Reales.xlsx` (atenciones reales) | Input secundario (Plan vs. Real) | **AUSENTE — generar sintético** |
+| `A.pdf` (enunciado oficial) | Documento base | **AUSENTE del repo** |
+| `Botathon 2026 - Teletón Práctica` (set con `Invalid_Records`) | Set de pruebas RPA | **AUSENTE del repo** |
+
+Esquema del SIC a generar: [§3.4](#34-sic-ausente--esquema-a-generar). Decisiones asociadas: [§12](#12-decisiones-pendientes).
+
+---
+
+## 3. Esquemas exactos
+
+### 3.1 `Nac - Base contratos x mes.xlsx` → hoja `Dotacion_2026`
+
+**Trampas de formato (críticas para la ingesta):**
+- Encabezados en **fila 2** (fila 1 vacía) → parseo ingenuo da `Unnamed`.
+- `Fecha Término`: 98% nulos (`NaT`) = contrato vigente. No-nulo = baja/finiquito.
+- `Periodo` = fecha primer-día-de-mes. `Días de la Jornada` = texto tipo `lmwj`.
+
+**Volumen:** 3.123 filas × 19 columnas · 462 `PersonaId` · 15 siglas instituto · ene–jul 2026.
+
+**Columnas (las 19, exactas):**
+
+| Col | Contenido | Notas |
+|---|---|---|
+| `IT` | Código instituto (11, 12, 21…141) | FK a catálogo |
+| `Instituto` | Sigla (`Ari, Iqu, Ant, Cal, Cop, Coq, Val, OHi, Tal, Con, Tem, PMo, Coy, San, Vdv`) | 15 únicas |
+| `PersonaId` | ID profesional | **Parte de la PK** |
+| `Área`, `Nombre Sub-área` | Ubicación orgánica | Texto libre |
+| `Centro de Costo` | C.Costo numérico | FK a `Parámetros` |
+| `Fecha de Nacimiento` | Fecha | Para "mes cumpleaños" (descuento) |
+| `Periodo` | `2026-MM-01` | **Parte de la PK** |
+| `Tipo de Contrato` | `Indefinido` / `Plazo fijo` | 2 valores |
+| `Tipo_Trab_161225` | `Titular` etc. | |
+| `Fecha Ingreso Compañía` | Fecha | Antigüedad |
+| `Fecha Término` | Fecha o `NaT` | NaT = vigente |
+| `Horas Semanales` | 7–44 h (media 36,9) | Valores >44 o <0 o texto = rechazo |
+| `Cargo` | Texto cargo homologable | FK a `Distribucion_NAC` |
+| `Tipo_Trabajador` | `Titular` etc. | |
+| `Días de la Jornada` | `lmwj` | Días laborables |
+| `Reg_SIC` | `D - SIC` | Registro en SIC |
+| `Cod_Esp` | Código especialidad (`AS`, `FI`, `KI`…) | FK a `Parámetros` |
+| `Ndias` | Entero (días/semana) | 4–5 |
+
+**Clave primaria de negocio: `[PersonaId + IT + Periodo]`** → duplicado = registro inválido.
+
+### 3.2 `Nac - Planificación Asistencial x mes.xlsx` → 8 hojas
+
+| Hoja | Dimensión | Contenido esencial | Uso en la solución |
+|---|---|---|---|
+| `Dotacion_Asistencial` | 476×205 | Matriz anual por profesional (ver §3.3) | Especificación funcional del motor de cálculo |
+| `Parámetros` | 138×51 | Homologación `Cod_Esp`→`Cargo Homologado`; factor grupal (AS 10%, ED 10%, UEDA 55%, ULAB 10%, UTAC 55%); N° pacientes/grupo (San/Con: 3–6; resto: 1,5–3); inhábiles 2026 | Migrar a tablas de parámetros editables |
+| `Distribucion_NAC` | 130×20 | % Dir / % Ind / % NAS **por cargo × tramo** (T1 ≥40 h; T2 22–<40 h; T3 <22 h); minutos estándar; catálogo de asignaciones especiales con autorización (Definidos DMN / Autorizado DMN) | **Tabla de reglas central del motor** |
+| `Resumen distribucion NAS` | 79×9 | Promedios por instituto: NAS ≈25%, Dir ≈55–63%, Ind ≈11–13% | Sanity check de resultados |
+| `Planificacion Total` | 23×12 | Totales anuales por instituto: plan 692.706 · MG 623.435 · +1.047 h/sem y 15.118 atenciones extra (presumible bloque vacantes) | **Validación del motor contra el Excel** |
+| `LOP` | 18×3 | Meta anual por sede (total 49.895; San 22.070 ≈ 44%) | KPI de comparación institucional |
+| `Excepciones` | 19×24 | Multi-sede con horas por instituto (ej. `125129`: 27 h Ant + 8 h Cal) y variaciones H/S manuales por período | Casos extremos: rompen supuestos simples |
+| `Calendario 2026` | 122×12 | Días hábiles/inhábiles por mes | Base de semanas hábiles |
+
+### 3.3 Anatomía de `Dotacion_Asistencial` (205 columnas en bloques)
+
+Encabezados reales en **fila 4** (índice 3); arriba hay título/meses combinados.
+
+| Bloque | Col (aprox.) | Columnas clave |
+|---|---|---|
+| Contrato | 1–30 | `IT, Instituto, PersonaId, Cargo, fechas contrato, Periodo Inicio/Fin Jornada, Vigencia, H/S ene–dic, Prom_Pond, Cambio jornada, H/D Promedio, Colación, Vacante/Nuevo, Excepción` |
+| Distribución % | 31–37 | `Pausa Saludable, Colación 15 min, Otras NAS, NAS Total, % NAS, %Directo, %Indirecto` |
+| Asignaciones | 38–47 | `Asignación 1/2 + horas, Por Autorizar DMN y VP, Hrs 3/4, Total Hrs Asig., %NAS+Asig., %Directo Final, %Indirecto Final, % Asistencial` |
+| Estándar semanal | 48–58 | `H/Sem Disp. Ate, Minutos Atención Dir/Ind, N° Ate Dir/Sem, N° Ate Ind/Sem, % Grupal, Cambio % Grupal V°B°, N° Pacientes por Grupo, Ate Semanal Dir+Grupal, Total por Semana` |
+| Meses/semanas | 59–74 | `ene…dic` (semanas hábiles) + `Semanas Hábiles Planificadas` |
+| Descuentos | 75–146 | `Lic1–12`, `Vac1–12`, `Perm1–12` + especiales: feriado zona extrema, mes/días cumpleaños, vísperas, días administrativos, capacitación, HEXA-CTR, jornada nacional, días progresivos, Ley 21.530, vacaciones pendientes, directiva sindical, ajuste días contrato, lactancia |
+| Semanas efectivas | 147–161 | `SemHab1–12`, `Semanas Hábiles Totales`, `Días Hábiles con D_Prog y Ley 21531` |
+| Plan y metas | 162–189 | `PlanAteDir1–12` + total · `PlanAteDir+Ind1–12` + total · `MG_AteDir1–12` + total · `MG_AteDir+Ind1–12` + total |
+| Cierre anual | 190–205 | Plan/MG anual directo, indirecto, total, `Observaciones` |
+
+### 3.4 SIC (ausente) — esquema a generar
+
+Archivo a crear: `SIC_Atenciones_Reales.xlsx` con columnas: `Periodo` (YYYY-MM-01) · `IT` · `PersonaId` · `Cod_Esp` · `Atenciones_Directas_Reales` (int) · `Atenciones_Indirectas_Reales` (int).
+
+**Requisito de demo:** generar con variación controlada por especialidad (déficit/superávit visibles en alertas).
+
+---
+
+## 4. Reglas de negocio (fórmulas)
+
+> Resumen operativo. Fórmulas LaTeX completas y validación con datos reales: [`informe_tecnico_requerimientos.md`](informe_tecnico_requerimientos.md) §3.
+
+### Pipeline completo (contrato → meta)
+
+```mermaid
+flowchart TD
+    A["Contrato BUK\nH semanales · cargo · esp · vigencia"] --> B["Tramo: T1 ≥40h · T2 22–<40h · T3 <22h"]
+    B --> C["% Dir / % Ind / % NAS base\n(cargo × tramo)"]
+    C --> D["− NAS (pausa, colación, otras)"]
+    D --> E["− Asignaciones especiales\n(± V°B° DMN)"]
+    E --> F["% finales Dir / Ind / Asistencial"]
+    F --> G["⌊H × % × 60 / minutos_std⌋\nate/semana"]
+    G --> H["× factor grupal\n(solo AS, ED, UTAC, UEDA, ULAB)"]
+    H --> I["× semanas efectivas\n(hábiles − lic − vac − perm)"]
+    I --> J["Plan mensual (piso)"]
+    J --> K["MG = ⌊plan × 0,90⌋"]
+    K --> L["Plan vs. Real (SIC)\n% FOJA · desviación"]
+```
+
+### Duda 1 — Asignaciones especiales vs % NAS
+
+**Regla:** se **suman** al % NAS base. El restante asistencial se reparte Dir/Ind **manteniendo proporción relativa**.
+
+```
+NAS_total%            = NAS_base% + (Σ horas_asignaciones / jornada_total)
+%Asistencial          = 100% − NAS_total%
+%Directo_final       = %Asistencial × (%Dir_base / (%Dir_base + %Ind_base))
+%Indirecto_final     = %Asistencial × (%Ind_base / (%Dir_base + %Ind_base))
+```
+
+**Validado** (`PersonaId 137732`, fisiatra 40 h, Líder Equipo 2 h): NAS 20% + 5% = 25% → asistencial 75% → Dir = 75×(65/80) = **60,94%** · Ind = 75×(15/80) = **14,06%**.
+
+### Duda 2 — Tramos, cambios de jornada, pasado
+
+- Tramos inclusivos: **T1 ≥ 40 h · T2 ≥ 22 y < 40 h · T3 < 22 h**.
+- **No retroactividad:** cambio de jornada en mayo → segmentar contrato por `Periodo Inicio`/`Periodo Fin`. Meses pasados **inmutables**; recálculo solo desde vigencia en adelante.
+
+### Duda 3 — Horas → atenciones, grupal, redondeos
+
+```
+AteDir_Sem        = ⌊ (H_sem × %Dir_final × 60) / MinDirecta ⌋
+AteInd_Sem        = ⌊ (H_sem × %Ind_final × 60) / 30 ⌋
+
+AteDir_Total_Sem  = AteDir_Sem × [ (1 − %Grupal) + (%Grupal × N_pac) ]   -- solo AS/ED/UTAC/UEDA/ULAB
+
+SemEfectivas_m    = SemHab_m − licencias_m − vacaciones_m − permisos_m
+PlanAteDir_m      = ⌊ AteDir_Total_Sem × SemEfectivas_m ⌋
+MG_m              = ⌊ PlanAteDir_m × 0,90 ⌋
+```
+
+- Minutos estándar directa: 30/40/45/60 según cargo (ULAB: 40). Indirecta: fijo 30.
+- **Dos redondeos truncados (piso), en ese orden exacto.**
+
+### Duda 4 — Transición legal 44h → 42h (mayo 2026)
+
+- **Dato verificado:** abril 140 contratos a 44 h → mayo 144 a 42 h, cero a 44 h.
+- **Regla:** si BUK viene actualizado, procesar nativamente. Si se procesa foto antigua (ej. enero), el motor **fuerza tope 42 h desde 2026-05-01** (ajuste normativo, no disminución unilateral).
+- Ene–abr quedan con 44 h; may–dic con 42 h. Caso estrella de no retroactividad.
+
+---
+
+## 5. KPIs (definiciones formales)
+
+Estos son los KPIs que el dashboard debe calcular; cada uno con su fórmula exacta:
+
+| KPI | Fórmula | Alcance / filtros |
+|---|---|---|
+| **% FOJA** | `(Horas mensuales disponibles para atención directa / Horas mensuales contratadas) × 100` | Instituto · mes · cargo · especialidad |
+| **Meta de Gestión (MG)** | `Σ MG_m` donde `MG_m = ⌊PlanAteDir_m × 0,90⌋` (plan directo proyectado × 90%) | ídem |
+| **Capacidad semanal** | Tarjetas: Σ Horas Totales · Horas Dir · Horas Ind · Horas NAS | ídem |
+| **Plan mensual** | `PlanAteDir_m = ⌊AteDir_Total_Sem × SemEfectivas_m⌋` (y versión Dir+Ind) | ídem |
+| **Desviación Plan vs. Real** | `(Real_SIC − Plan) / Plan × 100` → déficit/superávit con alerta | ídem |
+| **LOP institucional** | Meta anual fija por sede (ej. San 22.070; total 49.895) | Instituto |
+
+**Valores objetivo para validar el motor** (fuente `Planificacion Total`, año completo):
+
+| Métrica | Valor |
+|---|---|
+| Plan directo anual | 554.707 |
+| Plan indirecto anual | 137.999 |
+| Plan total anual | 692.706 |
+| MG total (90%) | 623.435 |
+| Horas semanales | 16.165 (+1.047 bloque adicional ≈ vacantes) |
+| Atenciones extra | 15.118 (bloque vacantes) |
+
+**Sanity por instituto** (`Resumen distribucion NAS`): NAS ≈ 25% · Dir ≈ 55–63% · Ind ≈ 11–13%.
+
+**Semanas hábiles 2026** (para `SemHab_m`): ene 4,2 · feb 4,0 · mar 4,4 · abr 4,2 · **may 3,8** · jun 4,2 · jul 4,4 · ago–dic 4,2 c/u.
+
+---
+
+## 6. Requerimientos del MVP
+
+### 6.1 Bot Blue Prism (obligatorio)
+
+- [ ] Ingesta programada de directorios (`.xlsx`/`.csv`), sin intervención humana.
+- [ ] Validaciones (módulo anomalías):
+  - [ ] Integridad referencial `IT` y `Cod_Esp` contra catálogos.
+  - [ ] Valores absurdos: horas < 0, nulos, texto-en-número (`"Tres Cientos"`), jornada > 44 h (> 42 h post-mayo).
+  - [ ] Duplicados en `[PersonaId + IT + Periodo]`.
+  - [ ] Output: `Rejected_Records_Report.xlsx`. **El bot no cae por datos sucios: aísla y sigue.**
+- [ ] Detección de deltas: altas · desvinculaciones · cambios de jornada (incl. 42 h).
+- [ ] Trazabilidad: ID único por lote + timestamp + tiempo de ejecución.
+
+### 6.2 Parametrización (sin código)
+
+- [ ] % base Dir/Ind/NAS por cargo y tramo.
+- [ ] Minutos estándar por atención (30/40/45/60).
+- [ ] Catálogo de asignaciones especiales (horas + flag V°B° DMN).
+- [ ] Simulación con vacantes presupuestadas on/off.
+
+### 6.3 Dashboard
+
+- [ ] Filtros globales: instituto · mes · cargo · especialidad.
+- [ ] KPIs de [§5](#5-kpis-definiciones-formales).
+
+### 6.4 Accesibilidad WCAG 2.1 AA (diferenciador — construir desde la primera pantalla)
+
+- [ ] Nunca solo color: ícono vectorial + texto explícito (ej. `[⚠ Error: Jornada Negativa]`, `[Déficit]`).
+- [ ] Sans-serif (Roboto/Verdana) > 16 px, sin justificado.
+- [ ] Navegación 100% teclado (`Tab` / `Shift+Tab` / `Enter` / `Escape`), foco visible.
+- [ ] HTML5 semántico, jerarquía `<h1>`–`<h3>`, `aria-label` en controles.
+
+---
+
+## 7. Casos de demo (criterios de aceptación)
+
+8 min totales: pitch 3 min + demo 5 min. Guion segundo a segundo en [`informe_tecnico_requerimientos.md`](informe_tecnico_requerimientos.md) §5.
+
+| Paso | Tiempo | Qué se muestra | Criterio de aceptación |
+|---|---|---|---|
+| 1 | 1:00 | Dashboard inicial (ene–abr) | Navegación **solo con Tab**; % FOJA, MG 90%, horas Dir/Ind/NAS visibles |
+| 2 | 1:15 | Bot + archivo corrupto | Ingesta de `Invalid_Records` (−44 h, "Tres Cientos", sede inexistente) → proceso sigue · `Rejected_Records.xlsx` generado |
+| 3 | 1:30 | Carga mayo 2026 | Nueva contrata + multi-sede (Ant/Cal) + 42 h detectados → deltas versionados → recálculo solo may–dic → vista "Antes/Después" |
+| 4 | 1:15 | Parametrización en vivo | Editar asignación (ej. Líder Equipo → 3 h) o % directo → KPIs se recalculan sin tocar código → capa SIC: déficit/superávit por especialidad |
+
+---
+
+## 8. Backlog priorizado
+
+### Must (MVP mínimo)
+
+| # | Ítem | Referencia |
+|---|---|---|
+| M1 | Ingesta `Dotacion_2026` (header fila 2, NaT, 15 institutos) con normalización | §3.1 |
+| M2 | Validaciones + `Rejected_Records_Report` | §6.1 |
+| M3 | Deltas: alta, baja, cambio jornada, 44→42 h | §4 Duda 4 |
+| M4 | Motor: tramos → % → asignaciones → atenciones → mensual → MG 90% | §4·§5 |
+| M5 | KPIs: % FOJA, MG, horas Dir/Ind/NAS | §5 |
+| M6 | Filtros: instituto, mes, cargo, especialidad | §6.3 |
+| M7 | WCAG 2.1 AA básico integral | §6.4 |
+
+### Should (ganan la demo)
+
+| # | Ítem |
+|---|---|
+| S1 | Parametrización editable en UI |
+| S2 | SIC sintético + Plan vs. Real con alertas |
+| S3 | Vista "Antes/Después" del recálculo |
+| S4 | ID de lote + log (trazabilidad) |
+
+### Could
+
+| # | Ítem |
+|---|---|
+| C1 | Simulación de vacantes on/off |
+| C2 | Multi-sede con split de horas (`Excepciones`) |
+| C3 | Auditoría de cambios de parámetros |
+
+### Won't (esta noche)
+
+API real BUK/SIC · multi-año · autenticación/perfiles · despliegue productivo.
+
+---
+
+## 9. Herramientas
+
+| Herramienta | Uso | Estado |
+|---|---|---|
+| **Blue Prism** | Bot: monitoreo, ingesta, validación, deltas, publicación | Disponible |
+| **Python (pandas/openpyxl)** | Exploración, SIC sintético, tests vs. totales Excel | Entorno verificado |
+| **Motor de reglas** | Pipeline §4 con redondeos exactos | **Stack: decidir en kickoff** |
+| **BD relacional** (SQLite/PostgreSQL) | Modelo normalizado: dotación, contratos versionados, parámetros, planes, metas, lotes | **Decidir en kickoff** |
+| **Dashboard web** | KPIs, filtros, parametrización, Plan vs. Real, WCAG AA | **Stack: decidir en kickoff** |
+| **GitHub + AI-SDLC** | Repo, issues, pipeline §13 | Operativo |
+
+**Criterio de decisión de stack:** lo que el equipo ejecute más rápido a las 2 AM. Elegancia no puntúa.
+
+---
+
+## 10. Plan de trabajo
+
+**Ventana:** 23:30 → 10:00. **Roles:** L (líder) · A (RPA/datos) · B (producto/cálculo).
+**Regla dura: congelar features a las 08:00. Buffer 09:00–10:00 es sagrado.**
+
+```mermaid
+gantt
+    title Sprint 06-nov 23:30 → 07-nov 10:00
+    dateFormat YYYY-MM-DD HH:mm
+    axisFormat %H:%M
+    section Todos
+    Kickoff stack+issues            :k0, 2026-11-06 23:30, 30m
+    Pasada WCAG + lector pantalla   :k4, 2026-11-07 07:00, 1h
+    Congelamiento · video respaldo  :k5, 2026-11-07 08:00, 1h
+    Ensayo demo ×2                  :crit, k6, 2026-11-07 09:00, 1h
+    section Dev A (RPA/datos)
+    Bot ingesta+validaciones        :a1, 2026-11-07 00:00, 3h
+    Deltas+42h+SIC sintético        :a2, 2026-11-07 03:00, 2h
+    Integración bot→BD→UI           :a3, 2026-11-07 05:00, 2h
+    section Dev B (producto)
+    BD+motor de cálculo             :b1, 2026-11-07 00:00, 3h
+    Dashboard KPIs+filtros          :b2, 2026-11-07 03:00, 2h
+    Parametrización+Plan vs. Real   :b3, 2026-11-07 05:00, 2h
+    section Líder
+    Casos de prueba motor           :l1, 2026-11-07 00:00, 3h
+    Guion demo segundo a segundo    :l2, 2026-11-07 03:00, 2h
+    QA+datos de demo                :l3, 2026-11-07 05:00, 2h
+```
+
+
+**Entregables:** bot funcional (4 pasos) · motor validado contra 692.706/623.435 · dashboard accesible con KPIs · `Rejected_Records` + SIC sintético + logs · demo de 8 min ensayada ≥ 2 veces.
+
+---
+
+## 11. Riesgos
+
+| # | Riesgo | Mitigación |
+|---|---|---|
+| R1 | Motor incompleto (205 col de lógica) | Priorizar Dudas 1–4; validar solo vs. totales agregados; lo accesorio (HEXA-CTR, lactancia, etc.) queda fuera |
+| R2 | Demo en vivo falla | Video respaldo a las 08:00; datos pre-cocinados en carpeta separada |
+| R3 | Accesibilidad queda al final | Construir WCAG desde fase 3; pasada dedicada 07:00–08:00 |
+| R4 | Trampas de formato Excel | Ingesta ya probada con pandas; codificar casos como tests |
+| R5 | Fatiga | Entregables parciales por fase; congelamiento 08:00; buffer sagrado |
+| R6 | Inconsistencias entre hojas (Chi/Cas, OHi) | Fuente de verdad = contratos; Excel solo referencia de validación |
+| R7 | SIC sintético poco creíble | Variación controlada por especialidad para alertas visibles |
+
+---
+
+## 12. Decisiones pendientes
+
+| # | Decisión | Dueño | Plazo |
+|---|---|---|---|
+| D1 | Stack motor + dashboard | Equipo | 23:30 |
+| D2 | SQLite vs PostgreSQL | B | 23:30 |
+| D3 | ¿Agregar `A.pdf` y set de práctica al repo? | L | 00:30 |
+| D4 | Quién presenta / opera el bot | L | 05:00 |
+| D5 | Perfil de variación del SIC sintético | A | 04:00 |
+| D6 | ¿Vacantes (C1) en el guion o fuera? | L | 07:00 |
+
+---
+
+## 13. Mapa del repositorio
+
+```
+botathon-2026/
+├── README.md                            ← este documento (contexto maestro)
+├── informe_tecnico_requerimientos.md    ← fórmulas §3, arquitectura §4, guion §5 (fuente de verdad)
+├── Nac - Base contratos x mes.xlsx      ← INPUT BUK (Dotacion_2026: 3.123×19, ene–jul, header fila 2)
+├── Nac - Planificación Asistencial x mes.xlsx ← 8 hojas (476×205 + reglas)
+├── trusted-issue-comments.json          ← evidencia pipeline AI-SDLC (issue #2)
+├── .ai-sdlc.yaml                        ← contrato pipeline (nivel shadow)
+├── .github/workflows/ai-sdlc.yml        ← pipeline issue→implement→review→merge
+├── .github/workflows/ai-sdlc-sweep.yml  ← anti-atasco de PRs
+└── .playwright-mcp/                     ← artefactos efímeros (ignorar)
+```
+
+**AI-SDLC (meta-automatización del repo, no confundir con el producto):** pipeline issue→PR→merge con review IA, actualmente `shadow` (solo reporta). **Uso esta noche:** issues del backlog §8 por el pipeline; si agrega fricción a las 2 AM → branch + PR directo.
+
+---
+
+*Generado vie 06-nov-2026 ~23:30. Sprint: entrega sáb 10:00. Verificado contra los Excel reales del repo.*
