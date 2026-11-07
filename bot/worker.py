@@ -1,29 +1,21 @@
 #!/usr/bin/env python3
 """
-bot/worker.py — Ingesta, validación, publicación a SQLite, detección de deltas y 42h no retroactivo (Issues #11, #15).
+bot/worker.py — Ingesta, validación, publicación a SQLite, detección de deltas, 42h no retroactivo e ingesta SIC (Issues #11, #15, #28).
 
 Parte del MVP Botathon 2026.
-Procesa archivos BUK (.xlsx):
-  1. Normaliza tipos y encabezados (header en fila 2 / índice 1).
-  2. Valida reglas de negocio:
-     - IT válido (en catálogo de institutos)
-     - Cod_Esp válido (no vacío / formato esperado)
-     - Horas Semanales numéricas >= 0 y <= 44 (o <= 42 a partir de 2026-05-01)
-     - Unicidad de clave primaria de negocio [PersonaId + IT + Periodo]
-  3. Aísla filas sucias sin caerse:
-     - Guarda registros rechazados en la tabla 'rechazados'
-     - Genera archivo 'Rejected_Records_Report.xlsx'
-  4. Inserta o actualiza registros válidos en la tabla 'contratos'
-  5. Detección de deltas (Issue #15):
-     - Compara lote entrante con el estado previo (meses anteriores o contratos existentes):
-       * ALTAS: PersonaId nuevo o primer registro del período.
-       * BAJAS: Persona con Fecha Término informada en el período o ausente respecto al mes anterior.
-       * CAMBIOS DE JORNADA: Variación de Horas Semanales (ej. 44h -> 42h por ley).
-       * MULTI-SEDE: PersonaId asignado a >= 2 institutos (ITs) distintos en el período.
-     - Guarda tabla 'deltas' en SQLite y genera resumen JSON con detalle por profesional e instituto.
-  6. Recálculo no retroactivo de planes:
-     - Invoca backend.motor para generar planes mensuales exclusivamente desde el período de vigencia
-       de los contratos ingeridos, manteniendo intactos los meses anteriores.
+Procesa archivos BUK (.xlsx) y SIC (.xlsx):
+  1. BUK:
+     - Normaliza tipos y encabezados (header en fila 2 / índice 1).
+     - Valida reglas de negocio: IT catálogo, Cod_Esp, horas semanales [0..44] (o <=42 desde 2026-05-01), PK única.
+     - Aísla filas sucias en tabla 'rechazados' y genera 'Rejected_Records_Report.xlsx'.
+     - Inserta válidos en 'contratos' y registra corrida en 'lotes'.
+     - Detecta deltas (ALTAS, BAJAS, CAMBIO_JORNADA, MULTI_SEDE) en tabla 'deltas'.
+     - Recalcula planes asistenciales (backend.motor) exclusivamente desde vigencia (no retroactivo).
+  2. SIC:
+     - Normaliza y valida archivo de atenciones reales (columnas Periodo, IT, PersonaId, Cod_Esp, Atenciones_Directas_Reales, Atenciones_Indirectas_Reales).
+     - Valida valores no negativos, IT válido y unicidad de PK [PersonaId + IT + Periodo].
+     - Aísla filas sucias en tabla 'rechazados'.
+     - Inserta válidos en tabla 'sic_real'.
 """
 
 import argparse
@@ -45,12 +37,14 @@ MOTIVOS = {
     "BAD_IT": "Código IT no existe en catálogo de institutos",
     "BAD_ESP": "Código de especialidad Cod_Esp inválido o vacío",
     "DUP_PK": "Clave de negocio duplicada [PersonaId + IT + Periodo]",
+    "NEGATIVE_ATE": "Atenciones reales negativas (< 0)",
+    "TEXT_ATE": "Atenciones contiene texto o valor no numérico",
     "OTHER": "Error de estructura o formato"
 }
 
 
 def asegurar_tablas(con: sqlite3.Connection) -> None:
-    """Asegura que existan las tablas necesarias, incluyendo la tabla deltas."""
+    """Asegura que existan las tablas necesarias, incluyendo deltas y sic_real."""
     cur = con.cursor()
     cur.execute(
         """
@@ -69,6 +63,24 @@ def asegurar_tablas(con: sqlite3.Connection) -> None:
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_deltas_lote ON deltas(lote_id)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_deltas_periodo ON deltas(periodo)")
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sic_real (
+            sic_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lote_id INTEGER NOT NULL REFERENCES lotes(lote_id),
+            periodo TEXT NOT NULL,
+            it INTEGER NOT NULL REFERENCES institutos(it),
+            persona_id INTEGER NOT NULL,
+            cod_esp TEXT NOT NULL,
+            ate_dir_reales INTEGER NOT NULL CHECK (ate_dir_reales >= 0),
+            ate_ind_reales INTEGER NOT NULL CHECK (ate_ind_reales >= 0),
+            UNIQUE (persona_id, it, periodo)
+        )
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_sic_periodo ON sic_real(periodo)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_sic_persona ON sic_real(persona_id)")
     con.commit()
 
 
@@ -94,7 +106,6 @@ def normalizar_fecha(val: Any) -> Optional[str]:
 
 
 def mes_previo(periodo: str) -> str:
-    """Dado 'YYYY-MM-01', retorna el período anterior 'YYYY-MM-01'."""
     dt = pd.to_datetime(periodo)
     prev = dt - pd.DateOffset(months=1)
     return prev.strftime("%Y-%m-01")
@@ -105,20 +116,12 @@ def detectar_deltas(
     lote_id: int,
     periodos_afectados: List[str]
 ) -> List[Dict[str, Any]]:
-    """
-    Detecta deltas para los períodos afectados comparando con el mes inmediatamente anterior:
-      1. ALTAS: profesional que no existía en contratos previos.
-      2. CAMBIOS DE JORNADA: profesional cuyas horas semanales difieren del mes previo (ej. 44 -> 42h).
-      3. MULTI-SEDE: profesional que presta servicios en >1 IT en el mismo período.
-      4. BAJAS: profesional con Fecha Término informada en el período o que desaparece del mes anterior.
-    """
     cur = con.cursor()
     deltas: List[Dict[str, Any]] = []
 
     for periodo in sorted(periodos_afectados):
         prev_p = mes_previo(periodo)
 
-        # Contratos del período actual en lote_id
         cur.execute(
             """
             SELECT it, persona_id, cargo, horas_semanales, fecha_ingreso, fecha_termino, cod_esp
@@ -129,7 +132,6 @@ def detectar_deltas(
         )
         actuales = cur.fetchall()
 
-        # Contratos del período previo (de cualquier lote previo)
         cur.execute(
             """
             SELECT it, persona_id, cargo, horas_semanales, fecha_ingreso, fecha_termino, cod_esp
@@ -142,16 +144,13 @@ def detectar_deltas(
         dict_ant = {(r["persona_id"], r["it"]): dict(r) for r in anteriores}
         pids_ant_global = {r["persona_id"] for r in anteriores}
 
-        # Conjunto de pids históricos en toda la BD antes de este período
         cur.execute("SELECT DISTINCT persona_id FROM contratos WHERE periodo < ?", (periodo,))
         pids_historicos = {r[0] for r in cur.fetchall()}
 
-        # 1. Agrupación por PersonaId en período actual para detectar multi-sede
         pids_actuales: Dict[int, List[sqlite3.Row]] = {}
         for r in actuales:
             pids_actuales.setdefault(r["persona_id"], []).append(r)
 
-        # Multi-sede
         for pid, rows in pids_actuales.items():
             if len(rows) > 1:
                 its = [str(r["it"]) for r in rows]
@@ -168,14 +167,12 @@ def detectar_deltas(
                         "detalle": f"Profesional multi-sede en {len(rows)} institutos ({'; '.join(horas_por_it)})"
                     })
 
-        # 2. Altas, Cambios de jornada y Bajas por Fecha Término
         for r in actuales:
             pid = r["persona_id"]
             it = r["it"]
             hs = r["horas_semanales"]
             f_term = r["fecha_termino"]
 
-            # ¿Es alta?
             if pid not in pids_historicos:
                 deltas.append({
                     "lote_id": lote_id,
@@ -188,7 +185,6 @@ def detectar_deltas(
                     "detalle": f"Alta nueva de profesional en IT {it} (Ingreso: {r['fecha_ingreso'] or 'N/A'})"
                 })
             else:
-                # Si existía en el mes previo para el mismo IT
                 ant = dict_ant.get((pid, it))
                 if ant:
                     if abs(ant["horas_semanales"] - hs) > 0.01:
@@ -203,7 +199,6 @@ def detectar_deltas(
                             "detalle": f"Cambio de jornada de {ant['horas_semanales']}h a {hs}h a contar de {periodo}"
                         })
                 elif pid in pids_ant_global:
-                    # Persona trabajaba en otro IT el mes pasado
                     deltas.append({
                         "lote_id": lote_id,
                         "periodo": periodo,
@@ -215,7 +210,6 @@ def detectar_deltas(
                         "detalle": f"Nueva sede IT {it} asignada a profesional en {periodo}"
                     })
 
-            # Baja explícita por Fecha Término en este mes
             if f_term and f_term.startswith(periodo[:7]):
                 deltas.append({
                     "lote_id": lote_id,
@@ -228,7 +222,6 @@ def detectar_deltas(
                     "detalle": f"Baja por fecha término estipulada al {f_term}"
                 })
 
-        # 3. Bajas por ausencia respecto al mes previo (si hay mes previo)
         if anteriores:
             actual_keys = {(r["persona_id"], r["it"]) for r in actuales}
             for (pid_ant, it_ant), r_ant in dict_ant.items():
@@ -244,7 +237,6 @@ def detectar_deltas(
                         "detalle": f"Baja / no renovación respecto al período {prev_p}"
                     })
 
-    # Insertar deltas en BD
     for d in deltas:
         cur.execute(
             """
@@ -265,20 +257,11 @@ def recalcular_planes_vigentes(
     lote_id: int,
     periodos_afectados: List[str]
 ) -> int:
-    """
-    Calcula los planes asistenciales exclusivamente para los períodos afectados (no retroactivo).
-    Usa el motor de cálculo importado.
-    """
     try:
         from backend.motor import CatalogosMotor, calcular_contrato_mes
-        catalogos = CatalogosMotor.desde_db_con(con)
+        catalogos = CatalogosMotor.desde_db()
     except Exception:
-        # Si CatalogosMotor no tiene desde_db_con o falla, usar fallback con path
-        try:
-            from backend.motor import CatalogosMotor, calcular_contrato_mes
-            catalogos = CatalogosMotor.desde_db()
-        except Exception:
-            return 0
+        return 0
 
     cur = con.cursor()
     total_calculados = 0
@@ -345,7 +328,6 @@ def validar_y_procesar_buk(
         asegurar_tablas(con)
         institutos_validos = obtener_catalogo_it(con)
 
-        # Leer archivo Excel - Dotacion_2026 o primera hoja
         try:
             df = pd.read_excel(ruta_archivo, sheet_name="Dotacion_2026", header=1)
         except Exception:
@@ -357,6 +339,265 @@ def validar_y_procesar_buk(
 
         for idx, row in df.iterrows():
             fila_origen = int(idx) + 3
+            row_dict = row.to_dict()
+            payload_json = json.dumps(
+                {k: (None if pd.isna(v) else str(v) if isinstance(v, (datetime, pd.Timestamp)) else v)
+                 for k, v in row_dict.items()},
+                ensure_ascii=False
+            )
+
+            it_raw = row.get("IT")
+            try:
+                it = int(it_raw)
+                if it not in institutos_validos:
+                    rechazados.append({
+                        "fila_origen": fila_origen,
+                        "motivo": "BAD_IT",
+                        "detalle": f"IT {it} no existe en catálogo de institutos",
+                        "payload": payload_json,
+                        "row_data": row_dict
+                    })
+                    continue
+            except (ValueError, TypeError):
+                rechazados.append({
+                    "fila_origen": fila_origen,
+                    "motivo": "BAD_IT",
+                    "detalle": f"IT inválido: '{it_raw}'",
+                    "payload": payload_json,
+                    "row_data": row_dict
+                })
+                continue
+
+            p_id_raw = row.get("PersonaId")
+            try:
+                persona_id = int(p_id_raw)
+            except (ValueError, TypeError):
+                rechazados.append({
+                    "fila_origen": fila_origen,
+                    "motivo": "OTHER",
+                    "detalle": f"PersonaId inválido: '{p_id_raw}'",
+                    "payload": payload_json,
+                    "row_data": row_dict
+                })
+                continue
+
+            periodo_raw = row.get("Periodo")
+            periodo = normalizar_fecha(periodo_raw)
+            if not periodo:
+                rechazados.append({
+                    "fila_origen": fila_origen,
+                    "motivo": "OTHER",
+                    "detalle": f"Periodo nulo o inválido: '{periodo_raw}'",
+                    "payload": payload_json,
+                    "row_data": row_dict
+                })
+                continue
+
+            cod_esp = row.get("Cod_Esp")
+            if pd.isna(cod_esp) or not str(cod_esp).strip() or str(cod_esp).strip().upper() == "XX":
+                rechazados.append({
+                    "fila_origen": fila_origen,
+                    "motivo": "BAD_ESP",
+                    "detalle": f"Cod_Esp inválido o fuera de catálogo: '{cod_esp}'",
+                    "payload": payload_json,
+                    "row_data": row_dict
+                })
+                continue
+            cod_esp = str(cod_esp).strip()
+
+            hs_raw = row.get("Horas Semanales")
+            try:
+                if isinstance(hs_raw, str):
+                    hs = float(hs_raw.replace(",", "."))
+                else:
+                    hs = float(hs_raw)
+            except (ValueError, TypeError):
+                rechazados.append({
+                    "fila_origen": fila_origen,
+                    "motivo": "TEXT_HS",
+                    "detalle": f"Horas Semanales contiene texto o valor no convertible: '{hs_raw}'",
+                    "payload": payload_json,
+                    "row_data": row_dict
+                })
+                continue
+
+            if hs < 0:
+                rechazados.append({
+                    "fila_origen": fila_origen,
+                    "motivo": "NEGATIVE_HS",
+                    "detalle": f"Horas Semanales no puede ser negativo: {hs}",
+                    "payload": payload_json,
+                    "row_data": row_dict
+                })
+                continue
+
+            tope = 42.0 if periodo >= "2026-05-01" else 44.0
+            if hs > tope:
+                rechazados.append({
+                    "fila_origen": fila_origen,
+                    "motivo": "HS_OVER",
+                    "detalle": f"Horas Semanales ({hs}h) excede el tope legal permitido ({tope}h para período {periodo})",
+                    "payload": payload_json,
+                    "row_data": row_dict
+                })
+                continue
+
+            pk = (persona_id, it, periodo)
+            if pk in pk_vistas:
+                rechazados.append({
+                    "fila_origen": fila_origen,
+                    "motivo": "DUP_PK",
+                    "detalle": f"Registro duplicado dentro del archivo para PK [PersonaId={persona_id}, IT={it}, Periodo={periodo}]",
+                    "payload": payload_json,
+                    "row_data": row_dict
+                })
+                continue
+            pk_vistas.add(pk)
+
+            validos.append({
+                "it": it,
+                "persona_id": persona_id,
+                "periodo": periodo,
+                "cargo": str(row.get("Cargo", "")).strip().upper(),
+                "area": str(row.get("Área", "")) if pd.notna(row.get("Área")) else None,
+                "centro_costo": str(row.get("Centro de Costo", "")) if pd.notna(row.get("Centro de Costo")) else None,
+                "tipo_contrato": str(row.get("Tipo de Contrato", "")) if pd.notna(row.get("Tipo de Contrato")) else None,
+                "fecha_ingreso": normalizar_fecha(row.get("Fecha Ingreso Compañía")),
+                "fecha_termino": normalizar_fecha(row.get("Fecha Término")),
+                "horas_semanales": hs,
+                "cod_esp": cod_esp,
+                "ndias": int(row.get("Ndias")) if pd.notna(row.get("Ndias")) else None,
+                "reg_sic": str(row.get("Reg_SIC", "")) if pd.notna(row.get("Reg_SIC")) else None,
+                "vigente_desde": periodo
+            })
+
+        duracion_ms = int(time.time() * 1000) - inicio_ms
+        fecha_corrida = datetime.now().isoformat()
+
+        cur = con.cursor()
+        cur.execute(
+            """
+            INSERT INTO lotes (archivo, tipo, fecha_corrida, duracion_ms, validos, rechazados)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (path_archivo.name, "BUK", fecha_corrida, duracion_ms, len(validos), len(rechazados))
+        )
+        lote_id = cur.lastrowid
+
+        for v in validos:
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO contratos (
+                    lote_id, it, persona_id, periodo, cargo, area, centro_costo,
+                    tipo_contrato, fecha_ingreso, fecha_termino, horas_semanales,
+                    cod_esp, ndias, reg_sic, vigente_desde
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    lote_id, v["it"], v["persona_id"], v["periodo"], v["cargo"],
+                    v["area"], v["centro_costo"], v["tipo_contrato"], v["fecha_ingreso"],
+                    v["fecha_termino"], v["horas_semanales"], v["cod_esp"], v["ndias"],
+                    v["reg_sic"], v["vigente_desde"]
+                )
+            )
+
+        for r in rechazados:
+            cur.execute(
+                """
+                INSERT INTO rechazados (lote_id, fila_origen, motivo, detalle, payload)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (lote_id, r["fila_origen"], r["motivo"], r["detalle"], r["payload"])
+            )
+
+        con.commit()
+
+        periodos_afectados = sorted(list({v["periodo"] for v in validos}))
+        deltas = detectar_deltas(con, lote_id, periodos_afectados)
+        planes_calculados = recalcular_planes_vigentes(con, lote_id, periodos_afectados)
+
+        reporte_excel_path = Path(out_dir) / "Rejected_Records_Report.xlsx"
+        if rechazados:
+            filas_reporte = []
+            for r in rechazados:
+                d = {
+                    "Fila Origen": r["fila_origen"],
+                    "Motivo": r["motivo"],
+                    "Descripción Error": r["detalle"]
+                }
+                d.update(r["row_data"])
+                filas_reporte.append(d)
+            df_rech = pd.DataFrame(filas_reporte)
+            df_rech.to_excel(reporte_excel_path, index=False)
+        else:
+            df_vacio = pd.DataFrame(columns=["Fila Origen", "Motivo", "Descripción Error"])
+            df_vacio.to_excel(reporte_excel_path, index=False)
+
+        conteo_deltas = {
+            "altas": sum(1 for d in deltas if d["tipo_delta"] == "ALTA"),
+            "bajas": sum(1 for d in deltas if d["tipo_delta"] == "BAJA"),
+            "cambios_jornada": sum(1 for d in deltas if d["tipo_delta"] == "CAMBIO_JORNADA"),
+            "multi_sede": sum(1 for d in deltas if d["tipo_delta"] == "MULTI_SEDE"),
+            "total_deltas": len(deltas)
+        }
+
+        resumen = {
+            "lote_id": lote_id,
+            "archivo": path_archivo.name,
+            "tipo": "BUK",
+            "fecha_corrida": fecha_corrida,
+            "duracion_ms": duracion_ms,
+            "total_filas": len(df),
+            "validos": len(validos),
+            "rechazados": len(rechazados),
+            "periodos_afectados": periodos_afectados,
+            "deltas": conteo_deltas,
+            "planes_calculados": planes_calculados,
+            "reporte_rechazos": str(reporte_excel_path)
+        }
+        resumen_json_path = Path(out_dir) / f"resumen_lote_{lote_id}.json"
+        resumen_json_path.write_text(json.dumps(resumen, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        return resumen
+
+    finally:
+        con.close()
+
+
+def validar_y_procesar_sic(
+    ruta_archivo: str,
+    db_path: str = "backend/db.sqlite",
+    out_dir: str = "bot/reportes"
+) -> Dict[str, Any]:
+    """
+    Ingesta y validación de atenciones reales SIC (Issue #28).
+    Columnas requeridas: Periodo, IT, PersonaId, Cod_Esp, Atenciones_Directas_Reales, Atenciones_Indirectas_Reales.
+    Aísla errores en 'rechazados' y guarda válidos en 'sic_real'.
+    """
+    inicio_ms = int(time.time() * 1000)
+    path_archivo = Path(ruta_archivo)
+    if not path_archivo.exists():
+        raise FileNotFoundError(f"Archivo no encontrado: {ruta_archivo}")
+
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+
+    try:
+        asegurar_tablas(con)
+        institutos_validos = obtener_catalogo_it(con)
+
+        try:
+            df = pd.read_excel(ruta_archivo, sheet_name="Atenciones_Reales")
+        except Exception:
+            df = pd.read_excel(ruta_archivo)
+
+        validos: List[Dict[str, Any]] = []
+        rechazados: List[Dict[str, Any]] = []
+        pk_vistas: Set[Tuple[int, int, str]] = set()
+
+        for idx, row in df.iterrows():
+            fila_origen = int(idx) + 2
             row_dict = row.to_dict()
             payload_json = json.dumps(
                 {k: (None if pd.isna(v) else str(v) if isinstance(v, (datetime, pd.Timestamp)) else v)
@@ -416,120 +657,111 @@ def validar_y_procesar_buk(
 
             # Validar Cod_Esp
             cod_esp = row.get("Cod_Esp")
-            if pd.isna(cod_esp) or not str(cod_esp).strip() or str(cod_esp).strip().upper() == "XX":
+            if pd.isna(cod_esp) or not str(cod_esp).strip():
                 rechazados.append({
                     "fila_origen": fila_origen,
                     "motivo": "BAD_ESP",
-                    "detalle": f"Cod_Esp inválido o fuera de catálogo: '{cod_esp}'",
+                    "detalle": f"Cod_Esp inválido o vacío: '{cod_esp}'",
                     "payload": payload_json,
                     "row_data": row_dict
                 })
                 continue
             cod_esp = str(cod_esp).strip()
 
-            # Validar Horas Semanales
-            hs_raw = row.get("Horas Semanales")
+            # Validar Atenciones Directas Reales
+            ate_dir_raw = row.get("Atenciones_Directas_Reales")
             try:
-                if isinstance(hs_raw, str):
-                    hs = float(hs_raw.replace(",", "."))
-                else:
-                    hs = float(hs_raw)
+                ate_dir = int(float(ate_dir_raw))
+                if ate_dir < 0:
+                    rechazados.append({
+                        "fila_origen": fila_origen,
+                        "motivo": "NEGATIVE_ATE",
+                        "detalle": f"Atenciones Directas Reales negativas: {ate_dir}",
+                        "payload": payload_json,
+                        "row_data": row_dict
+                    })
+                    continue
             except (ValueError, TypeError):
                 rechazados.append({
                     "fila_origen": fila_origen,
-                    "motivo": "TEXT_HS",
-                    "detalle": f"Horas Semanales contiene texto o valor no convertible: '{hs_raw}'",
+                    "motivo": "TEXT_ATE",
+                    "detalle": f"Atenciones Directas no convertible a entero: '{ate_dir_raw}'",
                     "payload": payload_json,
                     "row_data": row_dict
                 })
                 continue
 
-            if hs < 0:
+            # Validar Atenciones Indirectas Reales
+            ate_ind_raw = row.get("Atenciones_Indirectas_Reales")
+            try:
+                ate_ind = int(float(ate_ind_raw))
+                if ate_ind < 0:
+                    rechazados.append({
+                        "fila_origen": fila_origen,
+                        "motivo": "NEGATIVE_ATE",
+                        "detalle": f"Atenciones Indirectas Reales negativas: {ate_ind}",
+                        "payload": payload_json,
+                        "row_data": row_dict
+                    })
+                    continue
+            except (ValueError, TypeError):
                 rechazados.append({
                     "fila_origen": fila_origen,
-                    "motivo": "NEGATIVE_HS",
-                    "detalle": f"Horas Semanales no puede ser negativo: {hs}",
+                    "motivo": "TEXT_ATE",
+                    "detalle": f"Atenciones Indirectas no convertible a entero: '{ate_ind_raw}'",
                     "payload": payload_json,
                     "row_data": row_dict
                 })
                 continue
 
-            # Tope 44h siempre; 42h a partir de 2026-05-01
-            tope = 42.0 if periodo >= "2026-05-01" else 44.0
-            if hs > tope:
-                rechazados.append({
-                    "fila_origen": fila_origen,
-                    "motivo": "HS_OVER",
-                    "detalle": f"Horas Semanales ({hs}h) excede el tope legal permitido ({tope}h para período {periodo})",
-                    "payload": payload_json,
-                    "row_data": row_dict
-                })
-                continue
-
-            # Validar Duplicado PK [PersonaId + IT + Periodo] dentro del mismo archivo entrante
+            # Validar Unicidad PK [PersonaId + IT + Periodo]
             pk = (persona_id, it, periodo)
             if pk in pk_vistas:
                 rechazados.append({
                     "fila_origen": fila_origen,
                     "motivo": "DUP_PK",
-                    "detalle": f"Registro duplicado dentro del archivo para PK [PersonaId={persona_id}, IT={it}, Periodo={periodo}]",
+                    "detalle": f"Registro duplicado en archivo SIC para PK [PersonaId={persona_id}, IT={it}, Periodo={periodo}]",
                     "payload": payload_json,
                     "row_data": row_dict
                 })
                 continue
             pk_vistas.add(pk)
 
-            # Registro válido
             validos.append({
+                "periodo": periodo,
                 "it": it,
                 "persona_id": persona_id,
-                "periodo": periodo,
-                "cargo": str(row.get("Cargo", "")).strip().upper(),
-                "area": str(row.get("Área", "")) if pd.notna(row.get("Área")) else None,
-                "centro_costo": str(row.get("Centro de Costo", "")) if pd.notna(row.get("Centro de Costo")) else None,
-                "tipo_contrato": str(row.get("Tipo de Contrato", "")) if pd.notna(row.get("Tipo de Contrato")) else None,
-                "fecha_ingreso": normalizar_fecha(row.get("Fecha Ingreso Compañía")),
-                "fecha_termino": normalizar_fecha(row.get("Fecha Término")),
-                "horas_semanales": hs,
                 "cod_esp": cod_esp,
-                "ndias": int(row.get("Ndias")) if pd.notna(row.get("Ndias")) else None,
-                "reg_sic": str(row.get("Reg_SIC", "")) if pd.notna(row.get("Reg_SIC")) else None,
-                "vigente_desde": periodo
+                "ate_dir_reales": ate_dir,
+                "ate_ind_reales": ate_ind
             })
 
         duracion_ms = int(time.time() * 1000) - inicio_ms
         fecha_corrida = datetime.now().isoformat()
 
-        # Registrar Lote
         cur = con.cursor()
         cur.execute(
             """
             INSERT INTO lotes (archivo, tipo, fecha_corrida, duracion_ms, validos, rechazados)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (path_archivo.name, "BUK", fecha_corrida, duracion_ms, len(validos), len(rechazados))
+            (path_archivo.name, "SIC", fecha_corrida, duracion_ms, len(validos), len(rechazados))
         )
         lote_id = cur.lastrowid
 
-        # Insertar contratos válidos
         for v in validos:
             cur.execute(
                 """
-                INSERT OR REPLACE INTO contratos (
-                    lote_id, it, persona_id, periodo, cargo, area, centro_costo,
-                    tipo_contrato, fecha_ingreso, fecha_termino, horas_semanales,
-                    cod_esp, ndias, reg_sic, vigente_desde
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO sic_real (
+                    lote_id, periodo, it, persona_id, cod_esp, ate_dir_reales, ate_ind_reales
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    lote_id, v["it"], v["persona_id"], v["periodo"], v["cargo"],
-                    v["area"], v["centro_costo"], v["tipo_contrato"], v["fecha_ingreso"],
-                    v["fecha_termino"], v["horas_semanales"], v["cod_esp"], v["ndias"],
-                    v["reg_sic"], v["vigente_desde"]
+                    lote_id, v["periodo"], v["it"], v["persona_id"],
+                    v["cod_esp"], v["ate_dir_reales"], v["ate_ind_reales"]
                 )
             )
 
-        # Insertar registros rechazados en BD
         for r in rechazados:
             cur.execute(
                 """
@@ -541,17 +773,7 @@ def validar_y_procesar_buk(
 
         con.commit()
 
-        # Identificar períodos afectados en esta corrida
-        periodos_afectados = sorted(list({v["periodo"] for v in validos}))
-
-        # Detectar deltas contra historial
-        deltas = detectar_deltas(con, lote_id, periodos_afectados)
-
-        # Recálculo de planes desde vigencia
-        planes_calculados = recalcular_planes_vigentes(con, lote_id, periodos_afectados)
-
-        # Generar Reporte de Rechazos en Excel
-        reporte_excel_path = Path(out_dir) / "Rejected_Records_Report.xlsx"
+        reporte_excel_path = Path(out_dir) / "Rejected_Records_SIC_Report.xlsx"
         if rechazados:
             filas_reporte = []
             for r in rechazados:
@@ -568,30 +790,18 @@ def validar_y_procesar_buk(
             df_vacio = pd.DataFrame(columns=["Fila Origen", "Motivo", "Descripción Error"])
             df_vacio.to_excel(reporte_excel_path, index=False)
 
-        # Guardar resumen en JSON (incluyendo conteo de deltas)
-        conteo_deltas = {
-            "altas": sum(1 for d in deltas if d["tipo_delta"] == "ALTA"),
-            "bajas": sum(1 for d in deltas if d["tipo_delta"] == "BAJA"),
-            "cambios_jornada": sum(1 for d in deltas if d["tipo_delta"] == "CAMBIO_JORNADA"),
-            "multi_sede": sum(1 for d in deltas if d["tipo_delta"] == "MULTI_SEDE"),
-            "total_deltas": len(deltas)
-        }
-
         resumen = {
             "lote_id": lote_id,
             "archivo": path_archivo.name,
-            "tipo": "BUK",
+            "tipo": "SIC",
             "fecha_corrida": fecha_corrida,
             "duracion_ms": duracion_ms,
             "total_filas": len(df),
             "validos": len(validos),
             "rechazados": len(rechazados),
-            "periodos_afectados": periodos_afectados,
-            "deltas": conteo_deltas,
-            "planes_calculados": planes_calculados,
             "reporte_rechazos": str(reporte_excel_path)
         }
-        resumen_json_path = Path(out_dir) / f"resumen_lote_{lote_id}.json"
+        resumen_json_path = Path(out_dir) / f"resumen_lote_sic_{lote_id}.json"
         resumen_json_path.write_text(json.dumps(resumen, indent=2, ensure_ascii=False), encoding="utf-8")
 
         return resumen
@@ -600,20 +810,34 @@ def validar_y_procesar_buk(
         con.close()
 
 
+def procesar_archivo(
+    ruta_archivo: str,
+    db_path: str = "backend/db.sqlite",
+    out_dir: str = "bot/reportes",
+    tipo: Optional[str] = None
+) -> Dict[str, Any]:
+    """Determina si procesar como BUK o SIC según parámetro o nombre de archivo."""
+    nombre = Path(ruta_archivo).name.upper()
+    if tipo == "SIC" or "SIC" in nombre:
+        return validar_y_procesar_sic(ruta_archivo, db_path, out_dir)
+    return validar_y_procesar_buk(ruta_archivo, db_path, out_dir)
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Worker CLI para ingesta, validación, deltas y publicación de BUK.")
-    parser.add_argument("archivo", help="Ruta al archivo .xlsx de contratos BUK")
+    parser = argparse.ArgumentParser(description="Worker CLI para ingesta de BUK y SIC a SQLite.")
+    parser.add_argument("archivo", help="Ruta al archivo .xlsx (BUK o SIC)")
     parser.add_argument("--db", default="backend/db.sqlite", help="Ruta a la base de datos SQLite")
     parser.add_argument("--out-dir", default="bot/reportes", help="Directorio de salida para reportes")
+    parser.add_argument("--tipo", choices=["BUK", "SIC"], default=None, help="Forzar tipo de archivo")
     args = parser.parse_args()
 
-    resumen = validar_y_procesar_buk(args.archivo, args.db, args.out_dir)
-    print(f"Lote #{resumen['lote_id']} procesado:")
+    resumen = procesar_archivo(args.archivo, args.db, args.out_dir, args.tipo)
+    print(f"Lote #{resumen['lote_id']} procesado ({resumen['tipo']}):")
     print(f"  Archivo: {resumen['archivo']}")
     print(f"  Válidos: {resumen['validos']}")
     print(f"  Rechazados: {resumen['rechazados']}")
-    print(f"  Deltas detectados: {resumen['deltas']['total_deltas']} (Altas: {resumen['deltas']['altas']}, Cambios 42h/jornada: {resumen['deltas']['cambios_jornada']}, Multi-sede: {resumen['deltas']['multi_sede']}, Bajas: {resumen['deltas']['bajas']})")
-    print(f"  Planes calculados desde vigencia: {resumen['planes_calculados']}")
+    if "deltas" in resumen:
+        print(f"  Deltas: {resumen['deltas']['total_deltas']} (Altas: {resumen['deltas']['altas']}, 42h/Jornada: {resumen['deltas']['cambios_jornada']}, Multi-sede: {resumen['deltas']['multi_sede']})")
     print(f"  Duración: {resumen['duracion_ms']} ms")
     print(f"  Reporte generado: {resumen['reporte_rechazos']}")
 
