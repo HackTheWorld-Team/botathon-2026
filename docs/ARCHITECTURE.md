@@ -5,7 +5,7 @@
 | ID | Fecha | Decisión | Estado |
 |---|---|---|---|
 | D1 | 07-nov ~00:30 | Stack: React (Vite) + FastAPI + SQLite | Vigente |
-| D2 | 07-nov ~00:30 | BD: SQLite (PostgreSQL solo producción) | Vigente |
+| D2 | 07-nov ~00:30 | BD: SQLite (PostgreSQL solo producción) | Vigente (reforzada por ADR-014) |
 | D3 | 07-nov ~00:30 | PDF oficial + set de práctica en repo | Vigente |
 | D4 | 07-nov ~05:00 | Quién presenta / opera el bot (ensayo 09:00) | Vigente |
 | D5 | 07-nov ~04:00 | Perfil SIC sintético: balanceado, seed 42 | Vigente |
@@ -13,9 +13,10 @@
 | D7 | 07-nov ~01:00 | **100% local en PC del líder; VM del evento descartada** | Vigente (v2) |
 | D8 | 07-nov ~00:00 | Pitch 10:00 sáb, congelar 08:00, video 08:30, ensayo 09:00 | Vigente |
 | D9 | 07-nov ~00:30 | Demo con IA generativa (Claude vs Gemini por decidir) | Pendiente elección |
-| D10 | 07-nov ~01:00 | Blue Prism manual + híbrido (worker Python) | Vigente |
-| D11 | 07-nov ~02:15 | Motor asistencial desacoplado en funciones puras + caché SQLite | Vigente |
-| D12 | 07-nov ~03:25 | Endpoints FastAPI (/api/kpis, /api/plan, /api/plan-vs-real, /api/lotes) con agregación SQLite y alertas WCAG 2.1 AA | Vigente |
+| D10 | 07-nov ~01:00 | Blue Prism manual + híbrido (worker Python) | Vigente (v2: Studio por Dev B) |
+| D11 | 07-nov ~02:45 | UI: lenguaje pixel-zen + one-page 5 pestañas + tipografía no pixel (ADR-015) | Vigente |
+| D12 | 07-nov ~02:15 | Motor asistencial desacoplado en funciones puras + caché SQLite (ADR-006) | Vigente |
+| D13 | 07-nov ~03:25 | Endpoints FastAPI (/api/kpis, /api/plan, /api/plan-vs-real, /api/lotes) con agregación SQLite y alertas WCAG 2.1 AA (ADR-013) | Vigente |
 
 ---
 
@@ -36,9 +37,11 @@
 ## ADR-003 — Blue Prism manual + híbrido (D10)
 
 - **Contexto:** Blue Prism Studio es una app de escritorio (WPF), no automatizable vía MCP (no existe server MCP oficial) ni Playwright (solo navegadores). La rúbrica exige "Blue Prism en el centro, aporte visible".
-- **Decisión:** proceso pequeño en Studio (~12–15 stages, construido a mano por Dev A con [`bot/BOT_BUILD_GUIDE.md`](../bot/BOT_BUILD_GUIDE.md)) que orquesta: monitor de carpeta → mover → ejecutar `bot/worker.py` (CLI Python: ingesta, validación, deltas, publicación) → leer resultado → clasificar salida. Lógica pesada testada en Python, no en Code stages C# (no verificables localmente).
+- **Decisión:** proceso pequeño en Studio (~12–15 stages, construido a mano con [`bot/BOT_BUILD_GUIDE.md`](../bot/BOT_BUILD_GUIDE.md)) que orquesta: monitor de carpeta → mover → ejecutar `bot/worker.py` (CLI Python: ingesta, validación, deltas, publicación) → leer resultado → clasificar salida. Lógica pesada testada en Python, no en Code stages C# (no verificables localmente).
 - **Consecuencias:** worker 100% testeable contra datos reales; Studio mínima y demostrable; rechazos (`Rejected_Records_Report.xlsx`) y lotes con ID generados por el worker; riesgo residual: config de "Start Process" en Studio — mitigado con guía exacta.
 - **Decidió:** Líder con recomendación del agente — 07-nov ~01:00.
+
+> **v2 (07-nov ~03:15):** el líder reasignó la construcción del proceso en Studio a **Dev B (Isabel)** — issue #52, sí o sí. Dev A mantiene `worker.py`, carpetas, rechazos, deltas/42h e ingesta SIC (#11 #13 #15 #28). Resto de la decisión sin cambios. Nota operativa (D7): Studio vive en el PC del líder → Isabel construye en ese equipo (presencial o dirigida por el líder).
 
 ## ADR-004 — Metodología de ejecución vía issues (ai-sdlc + workers IA)
 
@@ -54,7 +57,7 @@
 - **Consecuencias:** trabajo paralelo sin conflictos; pruebas por módulo; el contrato de datos (esquema SQLite + esquema JSON de worker) es la única dependencia cruzada y vive documentado.
 - **Decidió:** Líder — 07-nov ~01:00.
 
-## ADR-006 — Arquitectura del motor asistencial (D11, funciones puras + caché SQLite)
+## ADR-006 — Arquitectura del motor asistencial (D12, funciones puras + caché SQLite)
 
 - **Contexto:** el motor de cálculo (issues #17 y #18) requiere replicar las fórmulas del §4 con exactitud absoluta: tramos inclusivos, absorción de asignaciones especiales sobre el % NAS basal, ajuste no retroactivo de 42h (mayo 2026), factor grupal y doble redondeo truncado piso (`floor`).
 - **Decisión:** estructurar `backend/motor.py` como un conjunto de funciones puras independientes de I/O (`tramo_inclusivo`, `ajustar_tope_42h`, `calcular_distribucion_final`, `calcular_atenciones_semanales`, `ajustar_atencion_grupal`, `calcular_semanas_efectivas`, `calcular_plan_mensual`, `calcular_foja`), complementadas por la clase `CatalogosMotor` para lectura en memoria desde SQLite (`backend/db.sqlite`).
@@ -103,13 +106,27 @@
 - **Consecuencias:** cumplimiento de la rúbrica; transparencia; el líder elige el modelo antes de las 07:00.
 - **Decidió:** Líder — 07-nov ~00:30 (pendiente elección de modelo).
 
-## ADR-013 — Endpoints FastAPI asistenciales y doble codificación WCAG (D12)
+## ADR-013 — Endpoints FastAPI asistenciales y doble codificación WCAG (D13)
 
 - **Contexto:** el Dashboard accesible requiere KPIs consolidados (% FOJA, horas agregadas, meta 90%), dotación paginada y cruce Plan vs. Real con latencias inferiores a 300ms y alertas conformes a WCAG 2.1 AA (Issue #20).
 - **Decisión:** implementar `backend/main.py` sobre FastAPI con agregaciones nativas en SQLite bajo WAL mode; soportar filtros multinivel (`it`, `periodo`, `cargo`, `area`, `cod_esp`) y entregar semáforo en `/api/plan-vs-real` con doble codificación obligatoria (etiquetas textuales explícitas + íconos vectoriales + badges: CRITICO, CUMPLIDO, SUPERAVIT) tanto agrupado como desagrupado.
 - **Consecuencias:** respuestas en <20ms locales; tolerancia a estado cero sin caídas (0 contratos = ceros estructurados); desacoplamiento de entorno vía `BOTATHON_DB_PATH`; 9/9 pruebas unitarias automatizadas con `TestClient`.
 - **Decidió:** Líder y Dev B asistidos por Antigravity — 07-nov ~03:25.
 
+## ADR-014 — NoSQL evaluado y descartado; SQLite se mantiene (refuerza D2)
+
+- **Contexto:** en fase early, el líder planteó migrar la BD a NoSQL ante posible cambio de datos/ingesta "a futuro en producción".
+- **Decisión:** mantener SQLite. Argumentos: dominio relacional (PK `[PersonaId+IT+Periodo]`, catálogos, deltas, integridad referencial `IT`/`Cod_Esp` es requerimiento puntado §6.1); stack pandas-céntrico (`df.to_sql` trivial); la tolerancia a formatos desconocidos ya vive en el worker (parsea→valida→normaliza→rechaza), no en el storage; sin server extra en el PC del líder (modo de fallo nuevo para la demo en vivo, R2).
+- **Consecuencias:** la flexibilidad de ingesta se resuelve en la capa correcta (worker + JSON de publicación, ADR-005); path a producción documentado = PostgreSQL (SQL→SQL); material de pitch: "evaluamos NoSQL y lo descartamos por integridad referencial".
+- **Decidió:** Líder con análisis del agente — 07-nov ~02:00.
+
+## ADR-015 — Lenguaje visual pixel-zen, one-page y tipografía no pixel (D11)
+
+- **Contexto:** sesión de especificación de UI con el líder (~02:00–02:45). Deseo: minimalismo zen con toque pixel geométrico y máxima legibilidad/accesibilidad; paleta de 5 colores aportada (white/pearl-aqua/turquoise/onyx/racing-red).
+- **Decisión:** ver [`UI_SPEC.md`](UI_SPEC.md) como fuente de verdad. Resumen: lo pixel vive SOLO en geometría (bordes rectos, sombras duras sin blur, barras segmentadas, iconos pixel-art, chips cuadrados, grid 4px, transiciones `steps()` con reduced-motion) — **cero fuentes pixel en texto** (Roboto única, tabular-nums). One-page con shell persistente (marca + statusbar del bot + filtros globales SIEMPRE visibles) y 5 pestañas ARIA Tabs sin router de librería (deep-link hash nativo: pushState tabs / replaceState filtros). Paleta con derivados AA obligatorios (`#0a6b63`, `#c62828`; turquoise prohibido como texto/focus sobre blanco; gradientes descartados). Contraste verificado programáticamente sobre mock. Issues: shell #46, split #27→#47, lotes #48, auditoría WCAG #49, enmienda tokens en #23, cierre #22.
+- **Consecuencias:** identidad distintiva sin sacrificar WCAG 2.1 AA (diferenciador de rúbrica); shell desacoplado de las vistas (ADR-005); URLs reproducibles para recovery en demo (R2), ensayos y video respaldo.
+- **Decidió:** Líder en sesión de specs — 07-nov ~02:45.
+
 ---
 
-*(Nuevas decisiones se agregan como ADR-014, ADR-015… con fecha y quién decidió.)*
+*(Nuevas decisiones se agregan como ADR-016, ADR-017… con fecha y quién decidió.)*
