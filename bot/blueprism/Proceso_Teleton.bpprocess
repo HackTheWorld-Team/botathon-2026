@@ -1,0 +1,94 @@
+﻿<process name="Proceso_Teleton" version="1.0" bpversion="7.5.1.18099" cpeversion="10.0.136.0" narrative="" byrefcollection="true" processrunningmessage="" disableversioning="false">
+  <view>
+    <camerax>-64</camerax>
+    <cameray>22</cameray>
+    <zoom version="2">1.875</zoom>
+  </view>
+  <preconditions />
+  <endpoint narrative="" />
+  <stage stageid="5f9cda38-8b8e-4d10-b84a-0fbaf06e3f3b" name="Start" type="Start">
+    <display x="-60" y="-135" />
+    <onsuccess>30d01e4e-1235-44b2-b378-aef100bf00e4</onsuccess>
+  </stage>
+  <stage stageid="8a0de30a-37cf-404d-aa1c-8cfcb0c09afa" name="End" type="End">
+    <display x="-60" y="90" />
+  </stage>
+  <stage stageid="2271e6dd-fb04-4ef8-937d-59789b6dfbf2" name="Stage1" type="ProcessInfo">
+    <display x="-195" y="-105" w="150" h="90" />
+  </stage>
+  <stage stageid="f053d967-08db-49d5-b347-0f544bf0e47a" name="File_Path" type="Data">
+    <loginhibit onsuccess="true" />
+    <display x="-240" y="0" w="120" h="60" />
+    <datatype>text</datatype>
+    <initialvalue xml:space="preserve">C:\Users\chinga\Desktop\BluePrism\Botathon_2026_Teleton_Practice_Workbook.xlsx</initialvalue>
+    <private />
+    <alwaysinit />
+  </stage>
+  <stage stageid="30d01e4e-1235-44b2-b378-aef100bf00e4" name="Create Instance" type="Action">
+    <loginhibit onsuccess="true" />
+    <display x="-60" y="-90" />
+    <inputs>
+      <input type="flag" name="Enable Events" friendlyname="Enable Events" narrative="Flag to indicate that events should be enabled / disabled on the attached instance - defaulted to True" expr="" />
+    </inputs>
+    <outputs>
+      <output type="number" name="handle" friendlyname="handle" narrative="An integer which can be used to identify the created instance in subsequent actions" stage="handle" />
+    </outputs>
+    <onsuccess>1bb61555-e51d-4710-9f16-98b65e688ccb</onsuccess>
+    <resource object="MS Excel VBO" action="Create Instance" />
+  </stage>
+  <stage stageid="2456d1ba-382c-48b3-8019-20f554ebe3b8" name="handle" type="Data">
+    <display x="135" y="0" />
+    <datatype>number</datatype>
+    <initialvalue />
+    <private />
+    <alwaysinit />
+  </stage>
+  <stage stageid="1bb61555-e51d-4710-9f16-98b65e688ccb" name="Open Workbook" type="Action">
+    <loginhibit onsuccess="true" />
+    <display x="-60" y="-45" />
+    <inputs>
+      <input type="number" name="handle" friendlyname="handle" narrative="The integer handle identifying the instance on which the required workbook should be opened. The default of zero indicates the currently active instance." expr="[handle]" />
+      <input type="text" name="File name" friendlyname="File name" narrative="The path and name of the file which should be opened." expr="[File_Path]" />
+      <input type="number" name="Timeout" friendlyname="Timeout" narrative="The time available for the action to complete." expr="" />
+      <input type="text" name="Password" friendlyname="Password" narrative="Optional. The password required to open the workbook. This only applies to workbooks that were saved with a password." expr="" />
+      <input type="flag" name="Update Links" friendlyname="Update Links" narrative="Optional. Flag that controls whether external references (links) in the file, such as the reference to other Workbooks, are updated. Default value is True." expr="" />
+    </inputs>
+    <outputs>
+      <output type="text" name="Workbook Name" friendlyname="Workbook Name" narrative="The name used by Excel to identify the workbook - usually this is the file name (without the path)." stage="Workbook Name" />
+    </outputs>
+    <onsuccess>fdaad7ef-d2c3-455d-8afb-5a279aa33c05</onsuccess>
+    <resource object="MS Excel VBO" action="Open Workbook" />
+  </stage>
+  <stage stageid="a61bfca3-301c-4748-8fbc-61aa0188a761" name="Workbook Name" type="Data">
+    <display x="-225" y="105" w="90" h="30" />
+    <datatype>text</datatype>
+    <initialvalue />
+    <private />
+    <alwaysinit />
+  </stage>
+  <stage stageid="fdaad7ef-d2c3-455d-8afb-5a279aa33c05" name="Get Planning Data" type="Action">
+    <loginhibit onsuccess="true" />
+    <display x="-60" y="0" />
+    <inputs>
+      <input type="number" name="handle" friendlyname="handle" narrative="The integer handle identifying the instance on which the worksheet which should be retrieved resides. The default of zero indicates the currently active instance." expr="[handle]" />
+      <input type="text" name="Workbook Name" friendlyname="Workbook Name" narrative="The name of the workbook which contains the sheet required. The default empty text indicates the currently active workbook on the specified instance." expr="[Workbook Name]" />
+      <input type="text" name="Worksheet Name" friendlyname="Worksheet Name" narrative="The name of the worksheet within the specified workbook which should be written to a collection. The default empty text indicates the currently active worksheet within the specified workbook." expr="&quot;Planning&quot;" />
+      <input type="text" name="Fetch Data with Method" friendlyname="Fetch Data with Method" narrative="Optional: The method used to fetch data from cells in the worksheet. Options include Text, Value, and Value2. The default indicates Value will be used." expr="" />
+      <input type="flag" name="Use Clipboard" friendlyname="Use Clipboard" narrative="Optional: Flag that indicates the Windows clipboard should be used. Default value is False." expr="" />
+    </inputs>
+    <outputs>
+      <output type="collection" name="Data" friendlyname="Data" narrative="The collection containing the data from the specified worksheet - the column IDs will be gleaned from the first row on the sheet being retrieved." stage="col_Planning" />
+    </outputs>
+    <onsuccess>2dc24db5-4753-48d2-a2df-47ff3db09aea</onsuccess>
+    <resource object="MS Excel VBO" action="Get Worksheet As Collection" />
+  </stage>
+  <stage stageid="2dc24db5-4753-48d2-a2df-47ff3db09aea" name="Exit" type="Action">
+    <loginhibit onsuccess="true" />
+    <display x="-60" y="45" />
+    <inputs>
+      <input type="number" name="Timeout" friendlyname="Timeout" narrative="The number of seconds by which the action should complete. Default is 30. Minimum is 10" expr="[handle]" />
+    </inputs>
+    <onsuccess>8a0de30a-37cf-404d-aa1c-8cfcb0c09afa</onsuccess>
+    <resource object="MS Excel VBO" action="Exit" />
+  </stage>
+</process>
