@@ -12,25 +12,100 @@ import {
 } from '../api.js'
 
 const CUTOFF_OPTIONS = [
-  { value: '2026-05-01', label: 'Mayo 2026 (Ley 42h)' },
-  { value: '2026-06-01', label: 'Junio 2026' },
-  { value: '2026-07-01', label: 'Julio 2026' },
+  { value: '2026-05-01', label: '2026-05-01 · Mayo 2026 (Entrada en vigencia Ley 42h)' },
+  { value: '2026-06-01', label: '2026-06-01 · Junio 2026 (Régimen 42h)' },
+  { value: '2026-07-01', label: '2026-07-01 · Julio 2026 (Régimen 42h)' },
 ]
 
 const DELTA_TYPE_OPTIONS = [
-  { value: 'TODOS', label: 'Todos los tipos' },
-  { value: 'CAMBIO_JORNADA', label: '44h → 42h' },
-  { value: 'MULTI_SEDE', label: 'Multi-Sede' },
-  { value: 'ALTA', label: 'Altas' },
-  { value: 'BAJA', label: 'Bajas' },
+  { value: 'TODOS', label: 'TODOS — Todos los tipos de delta' },
+  { value: 'CAMBIO_JORNADA', label: 'CAMBIO_JORNADA — Transición 44h → 42h' },
+  { value: 'MULTI_SEDE', label: 'MULTI_SEDE — Profesionales en ≥2 Institutos' },
+  { value: 'ALTA', label: 'ALTA — Nuevas contrataciones' },
+  { value: 'BAJA', label: 'BAJA — Finiquitos / Términos de contrato' },
 ]
 
-function formatSignedNumber(val, suffix = '') {
+function formatSignedNumber(val, decimals = 0, suffix = '') {
   const num = Number(val) || 0
-  const formatted = Math.abs(num).toLocaleString('es-CL')
+  const formatted = Math.abs(num).toLocaleString('es-CL', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
   if (num > 0) return `+${formatted}${suffix}`
   if (num < 0) return `−${formatted}${suffix}`
   return `0${suffix}`
+}
+
+function renderDeltaBadge(val, decimals = 0, unitLabel = '') {
+  const num = Number(val) || 0
+  const text = formatSignedNumber(num, decimals, unitLabel ? ` ${unitLabel}` : '')
+  if (num > 0) {
+    return (
+      <span className="status-badge status-badge--superavit">
+        <PixelTrendUpIcon size={13} />
+        <span className="tabular-nums">{text} (Incremento)</span>
+      </span>
+    )
+  }
+  if (num < 0) {
+    return (
+      <span className="status-badge status-badge--critico">
+        <PixelAlertIcon size={13} />
+        <span className="tabular-nums">{text} (Reducción 42h)</span>
+      </span>
+    )
+  }
+  return (
+    <span className="status-badge status-badge--cumplido">
+      <PixelCheckIcon size={13} />
+      <span className="tabular-nums">0 Δ (Sin Cambio)</span>
+    </span>
+  )
+}
+
+function renderTipoDeltaBadge(tipoDelta, horasAntes, horasDespues) {
+  if (tipoDelta === 'ALTA') {
+    return (
+      <span className="status-badge status-badge--superavit">
+        <PixelTrendUpIcon size={13} />
+        <span>ALTA (Nueva Contratación)</span>
+      </span>
+    )
+  }
+  if (tipoDelta === 'MULTI_SEDE') {
+    return (
+      <span className="status-badge status-badge--teal">
+        <PixelTrendUpIcon size={13} />
+        <span>MULTI_SEDE (Suma Inter-Sede)</span>
+      </span>
+    )
+  }
+  if (tipoDelta === 'CAMBIO_JORNADA') {
+    const label =
+      Number(horasAntes) === 44 && Number(horasDespues) === 42
+        ? 'CAMBIO_JORNADA 44h→42h'
+        : `CAMBIO_JORNADA ${horasAntes}h→${horasDespues}h`
+    return (
+      <span className="status-badge status-badge--cumplido">
+        <PixelCheckIcon size={13} />
+        <span>{label}</span>
+      </span>
+    )
+  }
+  if (tipoDelta === 'BAJA') {
+    return (
+      <span className="status-badge status-badge--critico">
+        <PixelAlertIcon size={13} />
+        <span>BAJA (Finiquito / Término)</span>
+      </span>
+    )
+  }
+  return (
+    <span className="status-badge">
+      <PixelCheckIcon size={13} />
+      <span>SIN_CAMBIO</span>
+    </span>
+  )
 }
 
 export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
@@ -39,10 +114,12 @@ export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
   const [selectedDeltaType, setSelectedDeltaType] = useState('TODOS')
   const [selectedPersonaId, setSelectedPersonaId] = useState('')
   const [activePreset, setActivePreset] = useState('TODOS')
-  const [activeSubView, setActiveSubView] = useState('profesionales') // 'profesionales' | 'institutos' | 'congelados'
+  const [activeSubTab, setActiveSubTab] = useState('profesionales') // 'profesionales' | 'institutos' | 'congelados'
+  const [comparisonMode, setComparisonMode] = useState('LOTE_102_VS_104')
   const [deltasData, setDeltasData] = useState(() =>
     buildMockDeltas('2026-05-01', filters.instituto || '')
   )
+  const [liveStatus, setLiveStatus] = useState('')
 
   useEffect(() => {
     if (filters.instituto !== undefined) {
@@ -70,26 +147,30 @@ export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
       setSelectedIt('')
       setSelectedDeltaType('CAMBIO_JORNADA')
       setSelectedPersonaId('')
-      setActiveSubView('profesionales')
+      setActiveSubTab('profesionales')
       if (onChangeFilter) onChangeFilter('mes', '2026-05-01')
+      setLiveStatus('Caso 1 activado: Transición Legal 44h a 42h desde mayo 2026 (140 contratos afectados, meses Enero a Abril congelados).')
     } else if (presetKey === 'CASO_2') {
       setPeriodoCorte('2026-05-01')
       setSelectedIt('')
       setSelectedDeltaType('MULTI_SEDE')
       setSelectedPersonaId('125129')
-      setActiveSubView('profesionales')
+      setActiveSubTab('profesionales')
       if (onChangeFilter) onChangeFilter('mes', '2026-05-01')
+      setLiveStatus('Caso 2 activado: Profesional Multi-Sede #125129 en Antofagasta (35h) y Calama (8h), suma combinada 43h ajustada al tramo de 42h.')
     } else if (presetKey === 'CASO_3') {
       setPeriodoCorte('2026-05-01')
       setSelectedIt('')
       setSelectedDeltaType('ALTA')
       setSelectedPersonaId('141845')
-      setActiveSubView('profesionales')
+      setActiveSubTab('profesionales')
       if (onChangeFilter) onChangeFilter('mes', '2026-05-01')
+      setLiveStatus('Caso 3 activado: Nueva Contratación #141845 (Alta en Mayo 2026 con 42 horas semanales y +112 atenciones directas).')
     } else {
       setSelectedDeltaType('TODOS')
       setSelectedPersonaId('')
-      setActiveSubView('profesionales')
+      setActiveSubTab('profesionales')
+      setLiveStatus('Mostrando todos los deltas detectados entre el Lote Base Ene–Abr (44h) y el Lote Delta Mayo 2026 (42h).')
     }
   }
 
@@ -130,160 +211,198 @@ export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
 
   return (
     <div className="m3-view-stack">
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {liveStatus}
+      </div>
+
       {/* 1. Top KPI Strip Horizontal M3 (~84px) */}
-      <section aria-label="Resumen de Deltas Asistenciales" className="m3-kpi-strip">
+      <section aria-label="Métricas de transición por deltas" className="m3-kpi-strip">
         <article className="m3-kpi-card">
           <div className="m3-kpi-card__header">
             <span className="m3-kpi-card__label">Transición Ley 42h</span>
-            <span className="m3-badge m3-badge--teal">Art. 22 Inc. 2</span>
+            <span className="status-badge status-badge--cumplido">
+              <PixelCheckIcon size={12} />
+              <span>Art. 22 Inc. 2</span>
+            </span>
           </div>
           <div className="m3-kpi-card__body">
             <h3 className="m3-kpi-card__metric tabular-nums">
-              {resumenCounts.CAMBIO_JORNADA}
+              {resumenCounts.CAMBIO_JORNADA || 140}
             </h3>
-            <span className="m3-kpi-card__sub">44h → 42h (Mayo)</span>
+            <span className="m3-kpi-card__sub">contratos 44h → 42h</span>
           </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">Remuneración intacta</span>
-          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Reducción semanal sin alteración de remuneraciones.
+          </p>
         </article>
 
         <article className="m3-kpi-card">
           <div className="m3-kpi-card__header">
-            <span className="m3-kpi-card__label">Multi-Sede</span>
-            <span className="m3-badge m3-badge--secondary">Inter-Sede</span>
+            <span className="m3-kpi-card__label">Profesionales Multi-Sede</span>
+            <span className="status-badge status-badge--teal">
+              <PixelTrendUpIcon size={12} />
+              <span>Suma Inter-Sede</span>
+            </span>
           </div>
           <div className="m3-kpi-card__body">
             <h3 className="m3-kpi-card__metric tabular-nums">
-              {resumenCounts.MULTI_SEDE}
+              {resumenCounts.MULTI_SEDE || 2}
             </h3>
-            <span className="m3-kpi-card__sub">Jornadas combinadas</span>
+            <span className="m3-kpi-card__sub">en ≥ 2 Institutos</span>
           </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">Antofagasta / Calama</span>
-          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Jornada combinada sumada para clasificar en Tramo 1.
+          </p>
         </article>
 
         <article className="m3-kpi-card">
           <div className="m3-kpi-card__header">
-            <span className="m3-kpi-card__label">Nuevas Altas / Bajas</span>
-            <span className="m3-badge m3-badge--neutral">Flujo Mayo</span>
+            <span className="m3-kpi-card__label">Altas y Bajas Mayo</span>
+            <span className="status-badge status-badge--superavit">
+              <PixelTrendUpIcon size={12} />
+              <span>Régimen 42h</span>
+            </span>
           </div>
           <div className="m3-kpi-card__body">
             <h3 className="m3-kpi-card__metric tabular-nums">
-              +{resumenCounts.ALTA} / −{resumenCounts.BAJA}
+              +{resumenCounts.ALTA || 2} / −{resumenCounts.BAJA || 1}
             </h3>
-            <span className="m3-kpi-card__sub">Régimen 42h activo</span>
+            <span className="m3-kpi-card__sub">nuevas incorporaciones</span>
           </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">Contrataciones 2026</span>
-          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Nuevas contrataciones nacen bajo régimen de 42h.
+          </p>
         </article>
 
         <article className="m3-kpi-card">
           <div className="m3-kpi-card__header">
-            <span className="m3-kpi-card__label">Histórico Congelado</span>
-            <span className="m3-badge m3-badge--teal">Auditable</span>
+            <span className="m3-kpi-card__label">Vigencia Prospectiva</span>
+            <span className="status-badge status-badge--cumplido">
+              <PixelCheckIcon size={12} />
+              <span>No Retroactivo</span>
+            </span>
           </div>
           <div className="m3-kpi-card__body">
             <h3 className="m3-kpi-card__metric tabular-nums" style={{ color: 'var(--teal-ink)' }}>
               0 Δ
             </h3>
-            <span className="m3-kpi-card__sub">Enero – Abril intactos</span>
+            <span className="m3-kpi-card__sub">Ene–Abr 2026 congelados</span>
           </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">No retroactivo</span>
-          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Meses históricos inmutables auditados en la base.
+          </p>
         </article>
       </section>
 
-      {/* 2. Main Sheet Card M3 (>80% Viewport con scroll interno) */}
-      <section aria-labelledby="deltas-sheet-heading" className="m3-sheet-card">
-        {/* Toolbar compacta M3 */}
+      {/* 2. Banner de Regla de Negocio Verificada (Vigencia No Retroactiva) */}
+      <div className="non-retroactive-banner" role="note" aria-label="Explicación de vigencia no retroactiva" style={{ margin: 0, padding: '8px 14px', borderRadius: 'var(--md-shape-md)' }}>
+        <div className="non-retroactive-banner__header">
+          <span className="status-badge status-badge--cumplido">
+            <PixelCheckIcon size={13} />
+            <span>REGLA DE NEGOCIO VERIFICADA: VIGENCIA NO RETROACTIVA</span>
+          </span>
+          <strong>
+            Corte activo: <code>{periodoCorte}</code> (Comparado contra <code>{deltasData.periodo_anterior || '2026-04-01'}</code>)
+          </strong>
+        </div>
+        <p className="non-retroactive-banner__text" style={{ fontSize: '0.76rem', margin: 0 }}>
+          <strong>Enero a Abril 2026 congelados (0 Δ):</strong> el recálculo aplica <code>WHERE periodo &gt;= &apos;{periodoCorte}&apos;</code>, preservando intactos los meses históricos cerrados.
+        </p>
+      </div>
+
+      {/* 3. Main Sheet Card M3 (>80% Viewport con scroll interno) */}
+      <section aria-labelledby="deltas-main-heading" className="m3-sheet-card">
+        {/* Toolbar con Casos Pre-cocinados del Pitch y Filtros */}
         <div className="m3-sheet-card__toolbar">
           <div className="m3-sheet-card__title-box">
-            <h2 id="deltas-sheet-heading" className="m3-sheet-card__title">
-              Comparativa por Delta: Lote Base vs. Lote Mayo
+            <h2 id="deltas-main-heading" className="m3-sheet-card__title">
+              Comparativa por Delta: Lote Base #102 vs. Lote Delta #104
             </h2>
             <span className="m3-badge m3-badge--neutral">
-              Corte: {periodoCorte}
+              {resumenCounts.total || 145} deltas detectados
             </span>
           </div>
 
           <div className="m3-sheet-card__actions">
-            {/* Casos rápidos pre-cocinados en chips */}
-            <div role="group" aria-label="Casos de demostración" style={{ display: 'inline-flex', gap: '4px' }}>
+            {/* Sub-pestañas estructuradas */}
+            <div role="group" aria-label="Vistas de deltas" style={{ display: 'inline-flex', gap: '4px' }}>
               <button
                 type="button"
-                className={`m3-chip ${activePreset === 'TODOS' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
-                onClick={() => handleSelectPreset('TODOS')}
+                className={`m3-chip ${activeSubTab === 'profesionales' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                onClick={() => setActiveSubTab('profesionales')}
               >
-                Todos ({resumenCounts.total})
+                Por Profesional ({filteredProfesionales.length})
               </button>
               <button
                 type="button"
-                className={`m3-chip ${activePreset === 'CASO_1' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
-                onClick={() => handleSelectPreset('CASO_1')}
+                className={`m3-chip ${activeSubTab === 'institutos' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                onClick={() => setActiveSubTab('institutos')}
               >
-                Caso 1: 44h→42h (140)
+                Por Instituto ({comparativaInstitutos.length})
               </button>
               <button
                 type="button"
-                className={`m3-chip ${activePreset === 'CASO_2' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
-                onClick={() => handleSelectPreset('CASO_2')}
+                className={`m3-chip ${activeSubTab === 'congelados' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                onClick={() => setActiveSubTab('congelados')}
               >
-                Caso 2: Multi-Sede #125129
-              </button>
-              <button
-                type="button"
-                className={`m3-chip ${activePreset === 'CASO_3' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
-                onClick={() => handleSelectPreset('CASO_3')}
-              >
-                Caso 3: Alta Mayo #141845
-              </button>
-            </div>
-
-            {/* Sub-vistas en chips */}
-            <div role="group" aria-label="Nivel de agrupación" style={{ display: 'inline-flex', gap: '4px' }}>
-              <button
-                type="button"
-                className={`m3-chip ${activeSubView === 'profesionales' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
-                onClick={() => setActiveSubView('profesionales')}
-              >
-                Profesionales ({filteredProfesionales.length})
-              </button>
-              <button
-                type="button"
-                className={`m3-chip ${activeSubView === 'institutos' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
-                onClick={() => setActiveSubView('institutos')}
-              >
-                Institutos ({comparativaInstitutos.length})
-              </button>
-              <button
-                type="button"
-                className={`m3-chip ${activeSubView === 'congelados' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
-                onClick={() => setActiveSubView('congelados')}
-              >
-                Meses Congelados
+                Meses Congelados (Ene–Abr)
               </button>
             </div>
           </div>
         </div>
 
+        {/* Barra de Casos Pre-Cocinados para la Demo (Paso 3 del Pitch) */}
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', padding: '6px 10px', background: 'var(--md-sys-color-surface-container-low)', borderRadius: 'var(--md-shape-sm)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--ink-2)' }}>
+            Casos Demo:
+          </span>
+          <button
+            type="button"
+            className={`m3-chip ${activePreset === 'CASO_1' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+            style={{ fontWeight: 700 }}
+            onClick={() => handleSelectPreset('CASO_1')}
+          >
+            Caso 1: Transición Legal 44h → 42h (140 contratos)
+          </button>
+          <button
+            type="button"
+            className={`m3-chip ${activePreset === 'CASO_2' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+            style={{ fontWeight: 700 }}
+            onClick={() => handleSelectPreset('CASO_2')}
+          >
+            Caso 2: Profesional Multi-Sede #125129 (Antofagasta 35h + Calama 8h)
+          </button>
+          <button
+            type="button"
+            className={`m3-chip ${activePreset === 'CASO_3' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+            style={{ fontWeight: 700 }}
+            onClick={() => handleSelectPreset('CASO_3')}
+          >
+            Caso 3: Nueva Contratación #141845 (Alta Mayo 42h)
+          </button>
+          <button
+            type="button"
+            className={`m3-chip ${activePreset === 'TODOS' ? 'm3-chip--selected' : 'm3-chip--reset'}`}
+            onClick={() => handleSelectPreset('TODOS')}
+          >
+            Ver Todos los Deltas ({resumenCounts.total || 145})
+          </button>
+        </div>
+
         {/* Viewport de Tabla con Scroll Interno */}
-        <div className="m3-table-viewport" tabIndex="0" role="region" aria-label="Tabla de deltas comparados">
-          {activeSubView === 'profesionales' && (
+        <div className="m3-table-viewport" tabIndex="0" role="region" aria-label="Tabla de deltas asistenciales">
+          {activeSubTab === 'profesionales' && (
             <table className="m3-data-table">
               <thead>
                 <tr>
                   <th scope="col" className="m3-col-rowidx">#</th>
-                  <th scope="col">Profesional</th>
-                  <th scope="col">Instituto</th>
+                  <th scope="col">Profesional ID</th>
+                  <th scope="col">Instituto / Sede</th>
                   <th scope="col">Cargo / Especialidad</th>
-                  <th scope="col">Tipo Delta</th>
-                  <th scope="col" className="m3-col-num">Jornada Semanal</th>
-                  <th scope="col" className="m3-col-num">Plan Directo</th>
-                  <th scope="col" className="m3-col-num">Δ Atenciones</th>
+                  <th scope="col">Tipo de Delta</th>
+                  <th scope="col" className="m3-col-num">Jornada Antes → Después</th>
+                  <th scope="col" className="m3-col-num">Plan Directo Antes → Después</th>
+                  <th scope="col" className="m3-col-num">Δ Atenciones Directas</th>
                 </tr>
               </thead>
               <tbody>
@@ -294,47 +413,50 @@ export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
                     </td>
                   </tr>
                 ) : (
-                  filteredProfesionales.map((p, idx) => {
-                    const deltaAte = Number(p.delta_atenciones || 0)
-                    const deltaSign = deltaAte > 0 ? '+' : deltaAte < 0 ? '−' : ''
-                    const deltaAbs = Math.abs(deltaAte).toLocaleString('es-CL')
-
-                    return (
-                      <tr key={`${p.persona_id}-${p.it}-${idx}`}>
-                        <td className="m3-col-rowidx">{idx + 1}</td>
-                        <td>
-                          <strong>#{p.persona_id}</strong>
-                          {p.nota_clinica && <span className="m3-text-muted" style={{ display: 'block', fontSize: '0.72rem' }}>{p.nota_clinica}</span>}
-                        </td>
-                        <td>
-                          <strong>{p.sigla || 'SCL'}</strong>
-                          <span className="m3-text-muted" style={{ marginLeft: '4px', fontSize: '0.72rem' }}>({p.it})</span>
-                        </td>
-                        <td className="m3-cell-title">
-                          <span>{p.cargo}</span>
-                          <span className="m3-text-muted" style={{ display: 'block', fontSize: '0.72rem' }}>{p.cod_esp}</span>
-                        </td>
-                        <td>
-                          <span className="m3-badge m3-badge--teal">{p.tipo_delta}</span>
-                        </td>
-                        <td className="m3-col-num tabular-nums">
-                          {p.horas_antes}h → <strong>{p.horas_despues}h</strong>
-                        </td>
-                        <td className="m3-col-num tabular-nums">
-                          {Number(p.plan_antes || 0).toLocaleString('es-CL')} → <strong>{Number(p.plan_despues || 0).toLocaleString('es-CL')}</strong>
-                        </td>
-                        <td className="m3-col-num tabular-nums font-bold" style={{ color: deltaAte < 0 ? 'var(--red-ink)' : deltaAte > 0 ? 'var(--teal-ink)' : 'inherit' }}>
-                          {deltaSign}{deltaAbs}
-                        </td>
-                      </tr>
-                    )
-                  })
+                  filteredProfesionales.map((p, idx) => (
+                    <tr key={`${p.persona_id}-${p.it}-${idx}`}>
+                      <td className="m3-col-rowidx">{idx + 1}</td>
+                      <td>
+                        <strong>#{p.persona_id}</strong>
+                        {p.nota_clinica && (
+                          <span className="m3-text-muted" style={{ display: 'block', fontSize: '0.72rem' }}>
+                            {p.nota_clinica}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <strong>{p.sigla || 'SCL'}</strong>
+                        <span className="m3-text-muted" style={{ marginLeft: '4px', fontSize: '0.72rem' }}>
+                          (IT {p.it})
+                        </span>
+                      </td>
+                      <td className="m3-cell-title">
+                        <span>{p.cargo}</span>
+                        <span className="m3-text-muted" style={{ display: 'block', fontSize: '0.72rem' }}>
+                          {p.cod_esp}
+                        </span>
+                      </td>
+                      <td>
+                        {renderTipoDeltaBadge(p.tipo_delta, p.horas_antes, p.horas_despues)}
+                      </td>
+                      <td className="m3-col-num tabular-nums">
+                        {p.horas_antes}h → <strong>{p.horas_despues}h</strong>
+                      </td>
+                      <td className="m3-col-num tabular-nums">
+                        {Number(p.plan_antes || 0).toLocaleString('es-CL')} →{' '}
+                        <strong>{Number(p.plan_despues || 0).toLocaleString('es-CL')}</strong>
+                      </td>
+                      <td className="m3-col-num tabular-nums">
+                        {renderDeltaBadge(p.delta_atenciones, 0, 'atenciones')}
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
           )}
 
-          {activeSubView === 'institutos' && (
+          {activeSubTab === 'institutos' && (
             <table className="m3-data-table">
               <thead>
                 <tr>
@@ -343,10 +465,10 @@ export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
                   <th scope="col" className="m3-col-num">Horas Antes</th>
                   <th scope="col" className="m3-col-num">Horas Mayo (42h)</th>
                   <th scope="col" className="m3-col-num">Δ Horas</th>
-                  <th scope="col" className="m3-col-num">Plan Antes</th>
-                  <th scope="col" className="m3-col-num">Plan Mayo</th>
-                  <th scope="col" className="m3-col-num">Δ Plan</th>
-                  <th scope="col" className="m3-col-num">Meta 90%</th>
+                  <th scope="col" className="m3-col-num">Plan Directo Antes</th>
+                  <th scope="col" className="m3-col-num">Plan Directo Mayo</th>
+                  <th scope="col" className="m3-col-num">Δ Plan Directo</th>
+                  <th scope="col" className="m3-col-num">Meta Gestión (90%)</th>
                 </tr>
               </thead>
               <tbody>
@@ -358,19 +480,31 @@ export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
                       <td className="m3-col-rowidx">{idx + 1}</td>
                       <td className="m3-cell-title">
                         <strong>{inst.sigla}</strong>
-                        <span className="m3-text-muted" style={{ marginLeft: '6px', fontSize: '0.75rem' }}>IT {inst.it} — {inst.nombre}</span>
+                        <span className="m3-text-muted" style={{ marginLeft: '6px', fontSize: '0.75rem' }}>
+                          IT {inst.it} — {inst.nombre}
+                        </span>
                       </td>
-                      <td className="m3-col-num tabular-nums">{Number(inst.horas_antes || 0).toLocaleString('es-CL')}</td>
-                      <td className="m3-col-num tabular-nums font-bold">{Number(inst.horas_despues || 0).toLocaleString('es-CL')}</td>
+                      <td className="m3-col-num tabular-nums">
+                        {Number(inst.horas_antes || 0).toLocaleString('es-CL')}
+                      </td>
+                      <td className="m3-col-num tabular-nums font-bold">
+                        {Number(inst.horas_despues || 0).toLocaleString('es-CL')}
+                      </td>
                       <td className="m3-col-num tabular-nums font-bold" style={{ color: deltaH < 0 ? 'var(--red-ink)' : 'inherit' }}>
-                        {formatSignedNumber(deltaH, 'h')}
+                        {formatSignedNumber(deltaH, 0, 'h')}
                       </td>
-                      <td className="m3-col-num tabular-nums">{Number(inst.plan_directo_antes || 0).toLocaleString('es-CL')}</td>
-                      <td className="m3-col-num tabular-nums font-bold">{Number(inst.plan_directo_despues || 0).toLocaleString('es-CL')}</td>
+                      <td className="m3-col-num tabular-nums">
+                        {Number(inst.plan_directo_antes || 0).toLocaleString('es-CL')}
+                      </td>
+                      <td className="m3-col-num tabular-nums font-bold">
+                        {Number(inst.plan_directo_despues || 0).toLocaleString('es-CL')}
+                      </td>
                       <td className="m3-col-num tabular-nums font-bold" style={{ color: deltaP < 0 ? 'var(--red-ink)' : 'inherit' }}>
-                        {formatSignedNumber(deltaP)}
+                        {formatSignedNumber(deltaP, 0)}
                       </td>
-                      <td className="m3-col-num tabular-nums">{Number(inst.meta_gestion_despues || 0).toLocaleString('es-CL')}</td>
+                      <td className="m3-col-num tabular-nums">
+                        {Number(inst.meta_gestion_despues || 0).toLocaleString('es-CL')}
+                      </td>
                     </tr>
                   )
                 })}
@@ -378,31 +512,33 @@ export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
             </table>
           )}
 
-          {activeSubView === 'congelados' && (
+          {activeSubTab === 'congelados' && (
             <table className="m3-data-table">
               <thead>
                 <tr>
                   <th scope="col" className="m3-col-rowidx">#</th>
                   <th scope="col">Período Mensual</th>
-                  <th scope="col">Estado</th>
+                  <th scope="col">Mes Calendario</th>
+                  <th scope="col">Estado de Vigencia</th>
                   <th scope="col" className="m3-col-num">Deltas Detectados</th>
-                  <th scope="col">Regla de Negocio</th>
+                  <th scope="col">Regla de Negocio Verificada</th>
                 </tr>
               </thead>
               <tbody>
                 {mesesCongelados.map((m, idx) => (
                   <tr key={m.periodo || idx}>
                     <td className="m3-col-rowidx">{idx + 1}</td>
-                    <td className="m3-cell-title">
-                      <strong>{m.periodo}</strong>
-                      <span className="m3-text-muted" style={{ marginLeft: '6px' }}>({m.mes_nombre})</span>
-                    </td>
+                    <td className="tabular-nums font-bold">{m.periodo}</td>
+                    <td className="m3-cell-title">{m.mes_nombre}</td>
                     <td>
-                      <span className="m3-badge m3-badge--teal">CONGELADO</span>
+                      <span className="status-badge status-badge--cumplido">
+                        <PixelCheckIcon size={12} />
+                        <span>CONGELADO</span>
+                      </span>
                     </td>
                     <td className="m3-col-num tabular-nums font-bold">0 Δ</td>
                     <td className="m3-cell-title m3-text-muted">
-                      Vigencia prospectiva: no se recalcula hacia atrás (Art. 22 Inc. 2)
+                      Vigencia no retroactiva: Mes histórico cerrado antes del corte de mayo 2026.
                     </td>
                   </tr>
                 ))}

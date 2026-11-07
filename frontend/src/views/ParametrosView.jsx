@@ -21,15 +21,15 @@ const CARGOS_CATALOG = [
 ]
 
 const TRAMOS_CATALOG = [
-  { value: 1, label: 'Tramo 1 (≥40h)' },
-  { value: 2, label: 'Tramo 2 (22h a <40h)' },
-  { value: 3, label: 'Tramo 3 (<22h)' },
+  { value: 1, label: 'Tramo 1 (≥40h semanales)' },
+  { value: 2, label: 'Tramo 2 (22h a <40h semanales)' },
+  { value: 3, label: 'Tramo 3 (<22h semanales)' },
 ]
 
 const VIGENCIA_OPTIONS = [
-  { value: '2026-05-01', label: 'Mayo 2026 (Transición 42h)' },
-  { value: '2026-06-01', label: 'Junio 2026' },
-  { value: '2026-07-01', label: 'Julio 2026' },
+  { value: '2026-05-01', label: '2026-05-01 (Mayo 2026 — Transición 42h)' },
+  { value: '2026-06-01', label: '2026-06-01 (Junio 2026 — Régimen 42h)' },
+  { value: '2026-07-01', label: '2026-07-01 (Julio 2026 — 2° Semestre)' },
 ]
 
 const INITIAL_DISTRIBUCION = [
@@ -78,31 +78,34 @@ const INITIAL_GRUPAL = [
 const INITIAL_AUDITORIA = [
   {
     auditoria_id: 12,
-    timestamp: '2026-05-02 08:50',
+    timestamp: '2026-05-02 08:50:11',
     usuario: 'admin_clinico',
     tipo_cambio: 'DISTRIBUCION',
     entidad_clave: 'MEDICO FISIATRA:T1',
-    valor_nuevo: 'Dir 65% / Ind 15% / NAS 20% (30m)',
+    valor_anterior: 'Dir 62% / Ind 18% / NAS 20%',
+    valor_nuevo: 'Dir 65% / Ind 15% / NAS 20% (30m dir) — Ajuste meta asistencial Fisiatría Mayo 42h',
     vigencia_desde: '2026-05-01',
     planes_recalculados: 2082,
   },
   {
     auditoria_id: 11,
-    timestamp: '2026-05-01 17:20',
+    timestamp: '2026-05-01 17:20:04',
     usuario: 'dmn_subdireccion',
     tipo_cambio: 'ASIGNACION',
     entidad_clave: 'Líder Equipo',
-    valor_nuevo: '4.0h/sem (Con V°B° DMN)',
+    valor_anterior: '3.0h/sem (Con V°B° DMN)',
+    valor_nuevo: '4.0h/sem (Con V°B° DMN) — Homologación Duda 1 y Duda 2 V°B° DMN',
     vigencia_desde: '2026-05-01',
     planes_recalculados: 2082,
   },
   {
     auditoria_id: 10,
-    timestamp: '2026-04-15 11:05',
+    timestamp: '2026-04-15 11:05:49',
     usuario: 'admin_clinico',
     tipo_cambio: 'GRUPAL',
     entidad_clave: 'UEDA',
-    valor_nuevo: 'Grupal 60% (8 pac SCL / 6 Otras)',
+    valor_anterior: 'Grupal 55% (SCL/CCP: 8 · Otras: 6)',
+    valor_nuevo: 'Grupal 60% (SCL/CCP: 8 · Otras: 6) — Actualización factor grupal Deporte Adaptado',
     vigencia_desde: '2026-05-01',
     planes_recalculados: 2082,
   },
@@ -164,6 +167,7 @@ function buildFallbackSimulation({
     foja_simulado_pct: fojaSimuladoPct,
     incluir_vacantes: incluirVacantes,
     horas_vacantes_semanales: vacHours,
+    delta_vacantes_atenciones: deltaFromVacantes,
   }
 }
 
@@ -182,7 +186,7 @@ export default function ParametrosView({ onAnnounce }) {
   const [minInd, setMinInd] = useState(30)
   const [vigencia, setVigencia] = useState('2026-05-01')
   const [usuario, setUsuario] = useState('admin_clinico')
-  const [motivo, setMotivo] = useState('Ajuste prospectivo de regla horaria asistencial')
+  const [motivo, setMotivo] = useState('Ajuste prospectivo de regla horaria y cobertura asistencial desde vigencia')
 
   const [incluirVacantes, setIncluirVacantes] = useState(false)
   const [horasVacantes, setHorasVacantes] = useState(42)
@@ -251,7 +255,7 @@ export default function ParametrosView({ onAnnounce }) {
     if (e) e.preventDefault()
     setValidationError('')
     if (Number(pctDir) + Number(pctInd) > 100) {
-      setValidationError('La suma de % Directo e % Indirecto no puede exceder el 100%.')
+      setValidationError('Error: La suma de % Horas Directas y % Horas Indirectas no puede superar el 100%.')
       return
     }
 
@@ -299,7 +303,7 @@ export default function ParametrosView({ onAnnounce }) {
   async function handleApplyChanges() {
     setValidationError('')
     if (Number(pctDir) + Number(pctInd) > 100) {
-      setValidationError('La suma de % Directo e % Indirecto no puede exceder el 100%.')
+      setValidationError('Error: La suma de % Horas Directas y % Horas Indirectas no puede superar el 100%.')
       return
     }
 
@@ -314,7 +318,7 @@ export default function ParametrosView({ onAnnounce }) {
       min_indirecta: Number(minInd),
       vigencia_desde: vigencia,
       usuario: usuario.trim() || 'admin_clinico',
-      motivo: motivo.trim() || 'Ajuste prospectivo desde panel',
+      motivo: motivo.trim() || 'Ajuste de regla horaria asistencial desde panel de administración',
     }
 
     try {
@@ -325,9 +329,15 @@ export default function ParametrosView({ onAnnounce }) {
       })
       if (!res.ok) throw new Error()
       const data = await res.json()
-      setApplyFeedback({ ok: true, msg: `Regla actualizada con éxito. ${data?.planes_recalculados || 2082} planes recalculados desde ${vigencia}.` })
+      setApplyFeedback({
+        ok: true,
+        msg: `Regla actualizada con éxito. ${data?.planes_recalculados || 2082} planes recalculados desde ${vigencia} (Enero a Abril 2026 congelados).`,
+      })
     } catch {
-      setApplyFeedback({ ok: true, msg: `Regla actualizada en memoria. Planes recalculados desde ${vigencia} (Ene–Abr congelados).` })
+      setApplyFeedback({
+        ok: true,
+        msg: `Regla actualizada en memoria. Planes recalculados desde ${vigencia} (Enero a Abril 2026 congelados sin mutar el histórico).`,
+      })
     } finally {
       setIsApplying(false)
     }
@@ -336,103 +346,112 @@ export default function ParametrosView({ onAnnounce }) {
   return (
     <div className="m3-view-stack">
       {/* 1. Top KPI Strip Horizontal M3 (~84px) */}
-      <section aria-label="Métricas de Parametrización" className="m3-kpi-strip">
+      <section aria-label="Métricas de Parametrización y Simulación" className="m3-kpi-strip">
         <article className="m3-kpi-card">
           <div className="m3-kpi-card__header">
-            <span className="m3-kpi-card__label">Regla Seleccionada</span>
-            <span className="m3-badge m3-badge--teal">Tramo {tramo}</span>
+            <span className="m3-kpi-card__label">Regla Activa</span>
+            <span className="status-badge status-badge--teal">
+              <span>Tramo {tramo}</span>
+            </span>
           </div>
           <div className="m3-kpi-card__body">
-            <h3 className="m3-kpi-card__metric" style={{ fontSize: '1.05rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <h3 className="m3-kpi-card__metric" style={{ fontSize: '1.02rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {cargo}
             </h3>
             <span className="m3-kpi-card__sub">
               Dir {pctDir}% · Ind {pctInd}% · NAS {pctNas}%
             </span>
           </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">{minDir}m dir · {minInd}m ind</span>
-          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Estándar: {minDir}m directas · {minInd}m indirectas
+          </p>
         </article>
 
         <article className="m3-kpi-card">
           <div className="m3-kpi-card__header">
             <span className="m3-kpi-card__label">Plan Directo Simulado</span>
-            <span className="m3-badge m3-badge--secondary">Meta: {simResult.mg_dir_simulado.toLocaleString('es-CL')}</span>
+            <span className="status-badge status-badge--secondary">
+              <span>MG: {Number(simResult.mg_dir_simulado || 0).toLocaleString('es-CL')}</span>
+            </span>
           </div>
           <div className="m3-kpi-card__body">
             <h3 className="m3-kpi-card__metric tabular-nums">
-              {simResult.plan_dir_simulado.toLocaleString('es-CL')}
+              {Number(simResult.plan_dir_simulado || 0).toLocaleString('es-CL')}
             </h3>
             <span className="m3-kpi-card__sub" style={{ color: simResult.delta_plan_dir >= 0 ? 'var(--teal-ink)' : 'var(--red-ink)' }}>
-              {simResult.delta_plan_dir >= 0 ? `+${simResult.delta_plan_dir.toLocaleString('es-CL')}` : simResult.delta_plan_dir.toLocaleString('es-CL')} Δ
+              {simResult.delta_plan_dir >= 0 ? `+${Number(simResult.delta_plan_dir).toLocaleString('es-CL')}` : Number(simResult.delta_plan_dir).toLocaleString('es-CL')} atenciones
             </span>
           </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">{simResult.contratos_afectados} contratos</span>
-          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Impacto en {simResult.contratos_afectados} contratos activos.
+          </p>
         </article>
 
         <article className="m3-kpi-card">
           <div className="m3-kpi-card__header">
-            <span className="m3-kpi-card__label">% FOJA Simulado</span>
-            <span className="m3-badge m3-badge--teal">Actual: {simResult.foja_actual_pct}%</span>
+            <span className="m3-kpi-card__label">% FOJA Institucional</span>
+            <span className="status-badge status-badge--cumplido">
+              <PixelCheckIcon size={12} />
+              <span>Eficiencia</span>
+            </span>
           </div>
           <div className="m3-kpi-card__body">
             <h3 className="m3-kpi-card__metric tabular-nums" style={{ color: 'var(--teal-ink)' }}>
               {simResult.foja_simulado_pct}%
             </h3>
             <span className="m3-kpi-card__sub">
-              {simResult.foja_simulado_pct >= simResult.foja_actual_pct ? '+ ' : ''}
-              {(simResult.foja_simulado_pct - simResult.foja_actual_pct).toFixed(2)}%
+              Actual: {simResult.foja_actual_pct}% ({simResult.foja_simulado_pct >= simResult.foja_actual_pct ? '+' : ''}{(simResult.foja_simulado_pct - simResult.foja_actual_pct).toFixed(2)}%)
             </span>
           </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">Eficiencia asistencial</span>
-          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Factor de Ocupación de Jornada Asistencial.
+          </p>
         </article>
 
         <article className="m3-kpi-card">
           <div className="m3-kpi-card__header">
-            <span className="m3-kpi-card__label">Vigencia Prospectiva</span>
-            <span className="m3-badge m3-badge--neutral">No Retroactivo</span>
+            <span className="m3-kpi-card__label">Vigencia No Retroactiva</span>
+            <span className="status-badge status-badge--cumplido">
+              <PixelCheckIcon size={12} />
+              <span>Inmutable</span>
+            </span>
           </div>
           <div className="m3-kpi-card__body">
             <h3 className="m3-kpi-card__metric" style={{ fontSize: '1.15rem' }}>
               {vigencia}
             </h3>
             <span className="m3-kpi-card__sub" style={{ color: 'var(--teal-ink)' }}>
-              Ene–Abr 100% congelados
+              Ene–Abr 2026 congelados
             </span>
           </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">Trazable en auditoría</span>
-          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Cambio auditable en <code>auditoria_parametros</code>.
+          </p>
         </article>
       </section>
 
       {/* 2. Main Sheet Card M3 (>80% Viewport con scroll interno) */}
-      <section aria-labelledby="param-sheet-heading" className="m3-sheet-card">
-        {/* Toolbar compacta M3 */}
+      <section aria-labelledby="param-main-heading" className="m3-sheet-card">
+        {/* Toolbar M3 */}
         <div className="m3-sheet-card__toolbar">
           <div className="m3-sheet-card__title-box">
-            <h2 id="param-sheet-heading" className="m3-sheet-card__title">
-              Gestor de Parámetros Asistenciales
+            <h2 id="param-main-heading" className="m3-sheet-card__title">
+              Gestor de Parámetros Asistenciales sin Código y Simulación en Memoria
             </h2>
             <span className="m3-badge m3-badge--neutral">
-              Sin Código
+              Vigencia: {vigencia}
             </span>
           </div>
 
           <div className="m3-sheet-card__actions">
-            {/* Sub-pestañas en chips */}
-            <div role="group" aria-label="Secciones de parámetros" style={{ display: 'inline-flex', gap: '4px' }}>
+            {/* Sub-pestañas estructuradas */}
+            <div role="group" aria-label="Módulos de parametrización" style={{ display: 'inline-flex', gap: '4px' }}>
               <button
                 type="button"
                 className={`m3-chip ${activeSubTab === 'simular' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
                 onClick={() => setActiveSubTab('simular')}
               >
-                Simular &amp; Ajustar
+                Simular &amp; Ajustar Regla
               </button>
               <button
                 type="button"
@@ -446,72 +465,95 @@ export default function ParametrosView({ onAnnounce }) {
                 className={`m3-chip ${activeSubTab === 'asignaciones' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
                 onClick={() => setActiveSubTab('asignaciones')}
               >
-                Asignaciones ({asignaciones.length})
+                Asignaciones Horarias con V°B° ({asignaciones.length})
               </button>
               <button
                 type="button"
                 className={`m3-chip ${activeSubTab === 'grupal' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
                 onClick={() => setActiveSubTab('grupal')}
               >
-                Factor Grupal ({grupal.length})
+                Factores Grupales ({grupal.length})
               </button>
               <button
                 type="button"
                 className={`m3-chip ${activeSubTab === 'auditoria' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
                 onClick={() => setActiveSubTab('auditoria')}
               >
-                Auditoría ({auditoria.length})
+                Auditoría Inmutable ({auditoria.length})
               </button>
             </div>
           </div>
         </div>
 
         {/* Viewport Principal con Scroll Interno */}
-        <div className="m3-table-viewport" tabIndex="0" role="region" aria-label="Contenido de parámetros">
+        <div className="m3-table-viewport" tabIndex="0" role="region" aria-label="Contenedor de configuración de parámetros">
           {activeSubTab === 'simular' && (
             <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {/* Controles de Configuración de Regla en Barra Compacta */}
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', background: 'var(--md-sys-color-surface-container-low)', padding: '10px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
-                <div className="m3-select-pill">
-                  <select value={cargo} onChange={handleCargoChange} aria-label="Seleccionar Cargo">
-                    {CARGOS_CATALOG.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Formulario de Configuración de Regla */}
+              <div style={{ background: 'var(--md-sys-color-surface-container-low)', padding: '12px 16px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--onyx)' }}>
+                  Configuración de Regla Horaria Asistencial:
+                </span>
 
-                <div className="m3-select-pill">
-                  <select value={tramo} onChange={handleTramoChange} aria-label="Seleccionar Tramo">
-                    {TRAMOS_CATALOG.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div className="filter-field">
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                      Cargo Asistencial
+                    </label>
+                    <div className="m3-select-pill">
+                      <select value={cargo} onChange={handleCargoChange} aria-label="Cargo Asistencial">
+                        {CARGOS_CATALOG.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                <div className="m3-select-pill">
-                  <select value={vigencia} onChange={(e) => setVigencia(e.target.value)} aria-label="Vigencia Desde">
-                    {VIGENCIA_OPTIONS.map((v) => (
-                      <option key={v.value} value={v.value}>{v.label}</option>
-                    ))}
-                  </select>
-                </div>
+                  <div className="filter-field">
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                      Tramo de Jornada Semanal
+                    </label>
+                    <div className="m3-select-pill">
+                      <select value={tramo} onChange={handleTramoChange} aria-label="Tramo de Jornada">
+                        {TRAMOS_CATALOG.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={incluirVacantes}
-                    onChange={(e) => setIncluirVacantes(e.target.checked)}
-                  />
-                  <span>Simular Vacantes ({horasVacantes}h)</span>
-                </label>
+                  <div className="filter-field">
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                      Fecha de Vigencia (No Retroactiva)
+                    </label>
+                    <div className="m3-select-pill">
+                      <select value={vigencia} onChange={(e) => setVigencia(e.target.value)} aria-label="Fecha de Vigencia">
+                        {VIGENCIA_OPTIONS.map((v) => (
+                          <option key={v.value} value={v.value}>{v.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="filter-field" style={{ alignSelf: 'flex-end', paddingBottom: '4px' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={incluirVacantes}
+                        onChange={(e) => setIncluirVacantes(e.target.checked)}
+                      />
+                      <span>Simular Cobertura de Vacantes ({horasVacantes}h semanales)</span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
-              {/* Sliders / Inputs compactos de Distribución */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+              {/* Distribución de la Jornada y Minutos Estándar */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--onyx)' }}>% Horas Directas</span>
-                    <strong className="tabular-nums" style={{ color: 'var(--teal-ink)' }}>{pctDir}%</strong>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>% Horas Directas (Pacientes)</span>
+                    <strong className="tabular-nums" style={{ color: 'var(--teal-ink)', fontSize: '0.95rem' }}>{pctDir}%</strong>
                   </div>
                   <input
                     type="range"
@@ -522,12 +564,15 @@ export default function ParametrosView({ onAnnounce }) {
                     onChange={(e) => setPctDir(Number(e.target.value))}
                     style={{ width: '100%', accentColor: 'var(--teal-ink)' }}
                   />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--ink-2)', marginTop: '4px', display: 'block' }}>
+                    Atención directa presencial e individual
+                  </span>
                 </div>
 
-                <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--onyx)' }}>% Horas Indirectas</span>
-                    <strong className="tabular-nums" style={{ color: 'var(--turquoise)' }}>{pctInd}%</strong>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>% Horas Indirectas (Gestión)</span>
+                    <strong className="tabular-nums" style={{ color: 'var(--turquoise)', fontSize: '0.95rem' }}>{pctInd}%</strong>
                   </div>
                   <input
                     type="range"
@@ -538,33 +583,88 @@ export default function ParametrosView({ onAnnounce }) {
                     onChange={(e) => setPctInd(Number(e.target.value))}
                     style={{ width: '100%', accentColor: 'var(--turquoise)' }}
                   />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--ink-2)', marginTop: '4px', display: 'block' }}>
+                    Fichas, reuniones clínicas y coordinación
+                  </span>
                 </div>
 
-                <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--ink-2)' }}>% NAS Residual</span>
-                    <strong className="tabular-nums" style={{ color: 'var(--onyx)' }}>{pctNas}%</strong>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>% NAS Residual (No Asistencial)</span>
+                    <strong className="tabular-nums" style={{ color: 'var(--onyx)', fontSize: '0.95rem' }}>{pctNas}%</strong>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--ink-2)', marginTop: '6px' }}>
-                    Absorbe horas administrativas
-                  </div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--ink-2)', marginTop: '8px', display: 'block' }}>
+                    Absorbe horas administrativas y asignaciones
+                  </span>
                 </div>
 
-                <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>Minutos Estándar</span>
-                  <div style={{ display: 'inline-flex', gap: '6px' }}>
-                    <span className="m3-badge m3-badge--secondary">{minDir}m Dir</span>
-                    <span className="m3-badge m3-badge--neutral">{minInd}m Ind</span>
+                <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>Minutos Estándar por Sesión</span>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <span className="m3-badge m3-badge--secondary" style={{ padding: '3px 10px', fontSize: '0.75rem' }}>
+                      Directa: {minDir}m
+                    </span>
+                    <span className="m3-badge m3-badge--neutral" style={{ padding: '3px 10px', fontSize: '0.75rem' }}>
+                      Indirecta: {minInd}m
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Barra Segmentada de la Regla Activa */}
-              <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-2)', display: 'block', marginBottom: '6px' }}>
-                  Proporción de Jornada (11 bloques proporcionales)
+              {/* Barra Proporcional de Jornada */}
+              <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-2)', display: 'block', marginBottom: '8px' }}>
+                  Distribución Proporcional de la Jornada (11 bloques segmentados):
                 </span>
                 <StackedHoursBar directPct={pctDir} indirectPct={pctInd} nasPct={pctNas} />
+              </div>
+
+              {/* Box Comparativo de Simulación en Memoria (POST /api/parametros/simular) */}
+              <div style={{ background: 'var(--md-sys-color-surface-container-low)', padding: '12px 16px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--onyx)' }}>
+                    Resultado de Simulación Previa en Memoria (Sin Mutar BD):
+                  </span>
+                  <span className="m3-badge m3-badge--teal">
+                    {simResult.contratos_afectados} contratos recalculados
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                  <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: 'var(--md-shape-sm)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-2)', display: 'block' }}>Plan Directo</span>
+                    <strong>{Number(simResult.plan_dir_actual || 426840).toLocaleString('es-CL')}</strong> → <strong>{Number(simResult.plan_dir_simulado || 0).toLocaleString('es-CL')}</strong>
+                    <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: simResult.delta_plan_dir >= 0 ? 'var(--teal-ink)' : 'var(--red-ink)' }}>
+                      Δ {simResult.delta_plan_dir >= 0 ? `+${Number(simResult.delta_plan_dir).toLocaleString('es-CL')}` : Number(simResult.delta_plan_dir).toLocaleString('es-CL')} atenciones
+                    </span>
+                  </div>
+
+                  <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: 'var(--md-shape-sm)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-2)', display: 'block' }}>Meta Gestión 90%</span>
+                    <strong>{Number(simResult.mg_dir_actual || 384156).toLocaleString('es-CL')}</strong> → <strong>{Number(simResult.mg_dir_simulado || 0).toLocaleString('es-CL')}</strong>
+                    <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: simResult.delta_mg_dir >= 0 ? 'var(--teal-ink)' : 'var(--red-ink)' }}>
+                      Δ {simResult.delta_mg_dir >= 0 ? `+${Number(simResult.delta_mg_dir).toLocaleString('es-CL')}` : Number(simResult.delta_mg_dir).toLocaleString('es-CL')} atenciones
+                    </span>
+                  </div>
+
+                  <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: 'var(--md-shape-sm)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-2)', display: 'block' }}>% FOJA Institucional</span>
+                    <strong>{simResult.foja_actual_pct}%</strong> → <strong>{simResult.foja_simulado_pct}%</strong>
+                    <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--teal-ink)' }}>
+                      Δ {(simResult.foja_simulado_pct - simResult.foja_actual_pct).toFixed(2)}%
+                    </span>
+                  </div>
+
+                  {incluirVacantes && (
+                    <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: 'var(--md-shape-sm)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--ink-2)', display: 'block' }}>Aporte Vacantes ({horasVacantes}h)</span>
+                      <strong style={{ color: 'var(--teal-ink)' }}>+{Number(simResult.delta_vacantes_atenciones || 0).toLocaleString('es-CL')} atenciones</strong>
+                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--ink-2)' }}>
+                        Proyección deseable sin tocar dotación
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {validationError && (
@@ -595,7 +695,7 @@ export default function ParametrosView({ onAnnounce }) {
                   onClick={handleApplyChanges}
                   disabled={isApplying}
                 >
-                  {isApplying ? 'Aplicando...' : 'Aplicar Regla (PATCH)'}
+                  {isApplying ? 'Aplicando...' : 'Aplicar Regla (PATCH No Retroactivo)'}
                 </button>
               </div>
             </div>
@@ -607,11 +707,11 @@ export default function ParametrosView({ onAnnounce }) {
                 <tr>
                   <th scope="col" className="m3-col-rowidx">#</th>
                   <th scope="col">Cargo Asistencial</th>
-                  <th scope="col">Tramo Horario</th>
-                  <th scope="col" className="m3-col-num">% Directas</th>
-                  <th scope="col" className="m3-col-num">% Indirectas</th>
-                  <th scope="col" className="m3-col-num">% NAS</th>
-                  <th scope="col" className="m3-col-num">Minutos (Dir/Ind)</th>
+                  <th scope="col">Tramo de Jornada</th>
+                  <th scope="col" className="m3-col-num">% Horas Directas</th>
+                  <th scope="col" className="m3-col-num">% Horas Indirectas</th>
+                  <th scope="col" className="m3-col-num">% NAS Residual</th>
+                  <th scope="col" className="m3-col-num">Minutos por Sesión (Dir / Ind)</th>
                   <th scope="col">Acción</th>
                 </tr>
               </thead>
@@ -632,7 +732,7 @@ export default function ParametrosView({ onAnnounce }) {
                       <td className="m3-col-num tabular-nums font-bold" style={{ color: 'var(--teal-ink)' }}>{d}%</td>
                       <td className="m3-col-num tabular-nums font-bold" style={{ color: 'var(--turquoise)' }}>{i}%</td>
                       <td className="m3-col-num tabular-nums">{n}%</td>
-                      <td className="m3-col-num tabular-nums">{r.min_directa || 30}m / {r.min_indirecta || 30}m</td>
+                      <td className="m3-col-num tabular-nums">{r.min_directa || 30} min / {r.min_indirecta || 30} min</td>
                       <td>
                         <button
                           type="button"
@@ -662,9 +762,10 @@ export default function ParametrosView({ onAnnounce }) {
               <thead>
                 <tr>
                   <th scope="col" className="m3-col-rowidx">#</th>
-                  <th scope="col">Nombre de la Asignación</th>
-                  <th scope="col" className="m3-col-num">Horas / Semana</th>
-                  <th scope="col">V°B° Dirección Médica (DMN)</th>
+                  <th scope="col">Nombre de la Asignación Horaria</th>
+                  <th scope="col" className="m3-col-num">Horas Asignadas / Semana</th>
+                  <th scope="col">V°B° Dirección Médica Nacional (DMN)</th>
+                  <th scope="col">Tratamiento Asistencial</th>
                 </tr>
               </thead>
               <tbody>
@@ -677,13 +778,16 @@ export default function ParametrosView({ onAnnounce }) {
                     <td className="m3-col-num tabular-nums font-bold">{Number(asig.horas_semana).toFixed(1)}h</td>
                     <td>
                       {Number(asig.requiere_vb_dmn) === 1 ? (
-                        <span className="m3-badge m3-badge--teal">
+                        <span className="status-badge status-badge--cumplido">
                           <PixelCheckIcon size={12} />
-                          <span>Requiere V°B° DMN</span>
+                          <span>Requiere V°B° DMN Obligatorio</span>
                         </span>
                       ) : (
-                        <span className="m3-badge m3-badge--neutral">Estándar Sede</span>
+                        <span className="m3-badge m3-badge--neutral">Estándar Sede (Sin V°B°)</span>
                       )}
+                    </td>
+                    <td className="m3-cell-title m3-text-muted">
+                      Horas absorbidas en NAS; no reducen remuneración contractual.
                     </td>
                   </tr>
                 ))}
@@ -696,10 +800,11 @@ export default function ParametrosView({ onAnnounce }) {
               <thead>
                 <tr>
                   <th scope="col" className="m3-col-rowidx">#</th>
-                  <th scope="col">Especialidad</th>
+                  <th scope="col">Especialidad Clínica / Unidad</th>
                   <th scope="col" className="m3-col-num">% Atención Grupal</th>
-                  <th scope="col" className="m3-col-num">Pacientes Santiago / Concepción</th>
-                  <th scope="col" className="m3-col-num">Pacientes Otras Sedes</th>
+                  <th scope="col" className="m3-col-num">Pacientes Sede Santiago / Concepción</th>
+                  <th scope="col" className="m3-col-num">Pacientes Otras Sedes Red</th>
+                  <th scope="col">Factor de Eficiencia</th>
                 </tr>
               </thead>
               <tbody>
@@ -713,8 +818,11 @@ export default function ParametrosView({ onAnnounce }) {
                     <td className="m3-col-num tabular-nums font-bold" style={{ color: 'var(--teal-ink)' }}>
                       {Math.round(Number(g.pct_grupal) * 100)}%
                     </td>
-                    <td className="m3-col-num tabular-nums">{g.n_pac_san_con} pacientes</td>
-                    <td className="m3-col-num tabular-nums">{g.n_pac_otros} pacientes</td>
+                    <td className="m3-col-num tabular-nums font-bold">{g.n_pac_san_con} pac/sesión</td>
+                    <td className="m3-col-num tabular-nums font-bold">{g.n_pac_otros} pac/sesión</td>
+                    <td className="m3-cell-title m3-text-muted">
+                      Multiplica atenciones directas por tamaño de grupo en sesiones grupales.
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -726,12 +834,13 @@ export default function ParametrosView({ onAnnounce }) {
               <thead>
                 <tr>
                   <th scope="col" className="m3-col-rowidx">#</th>
-                  <th scope="col">Fecha / Hora</th>
-                  <th scope="col">Usuario</th>
-                  <th scope="col">Tipo Cambio</th>
-                  <th scope="col">Entidad Modificada</th>
-                  <th scope="col">Valor Nuevo / Detalle</th>
-                  <th scope="col">Vigencia</th>
+                  <th scope="col">Timestamp Auditoría</th>
+                  <th scope="col">Usuario Responsable</th>
+                  <th scope="col">Tipo de Modificación</th>
+                  <th scope="col">Entidad Clave</th>
+                  <th scope="col">Valor Anterior</th>
+                  <th scope="col">Valor Nuevo / Justificación</th>
+                  <th scope="col">Vigencia Desde</th>
                   <th scope="col" className="m3-col-num">Planes Recalculados</th>
                 </tr>
               </thead>
@@ -741,10 +850,11 @@ export default function ParametrosView({ onAnnounce }) {
                     <td className="m3-col-rowidx">{idx + 1}</td>
                     <td className="m3-text-muted">{a.timestamp}</td>
                     <td><strong>{a.usuario}</strong></td>
-                    <td><span className="m3-badge m3-badge--teal">{a.tipo_cambio}</span></td>
+                    <td><span className="status-badge status-badge--teal">{a.tipo_cambio}</span></td>
                     <td className="m3-cell-title">{a.entidad_clave}</td>
+                    <td className="m3-cell-title m3-text-muted">{a.valor_anterior || '—'}</td>
                     <td className="m3-cell-title">{a.valor_nuevo}</td>
-                    <td>{a.vigencia_desde}</td>
+                    <td><strong style={{ color: 'var(--teal-ink)' }}>{a.vigencia_desde}</strong></td>
                     <td className="m3-col-num tabular-nums font-bold">{Number(a.planes_recalculados || 2082).toLocaleString('es-CL')}</td>
                   </tr>
                 ))}

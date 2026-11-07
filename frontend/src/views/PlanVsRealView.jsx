@@ -18,10 +18,10 @@ const MOCK_PROFESIONALES_BASE = [
     cod_esp: 'FISIATRIA',
     area: 'ADMISION Y SOPORTE MEDICO',
     cargo: 'MEDICO FISIATRA',
-    nota_clinica: 'Caso Dorado Duda 1 (Asig. Líder 4h con V°B° DMN)',
+    nota_clinica: 'Caso Dorado Duda 1 (Asig. Líder Equipo 4h con V°B° DMN)',
     plan_directo: 184,
     meta_gestion: 165,
-    real_directo: 131,
+    real_directo: 131, // Déficit crítico (-28.8%)
   },
   {
     persona_id: 125129,
@@ -33,7 +33,7 @@ const MOCK_PROFESIONALES_BASE = [
     nota_clinica: 'Multi-sede Norte (Antofagasta 22h)',
     plan_directo: 118,
     meta_gestion: 106,
-    real_directo: 112,
+    real_directo: 112, // Meta cumplida (94.9%)
   },
   {
     persona_id: 125129,
@@ -45,7 +45,7 @@ const MOCK_PROFESIONALES_BASE = [
     nota_clinica: 'Multi-sede Norte (Calama 20h)',
     plan_directo: 108,
     meta_gestion: 97,
-    real_directo: 110,
+    real_directo: 110, // Superávit (+1.9%)
   },
   {
     persona_id: 141845,
@@ -54,10 +54,10 @@ const MOCK_PROFESIONALES_BASE = [
     cod_esp: 'TERAPIA OCUPACIONAL',
     area: 'REHABILITACION INFANTIL',
     cargo: 'TERAPEUTA OCUPACIONAL',
-    nota_clinica: 'Nueva Contratación Mayo 2026 (42h)',
+    nota_clinica: 'Nueva Contratación Mayo 2026 (Jornada 42h)',
     plan_directo: 216,
     meta_gestion: 194,
-    real_directo: 204,
+    real_directo: 204, // Meta cumplida (94.4%)
   },
   {
     persona_id: 130412,
@@ -69,7 +69,7 @@ const MOCK_PROFESIONALES_BASE = [
     nota_clinica: 'Jornada 42h Concepción',
     plan_directo: 210,
     meta_gestion: 189,
-    real_directo: 221,
+    real_directo: 221, // Superávit (+5.2%)
   },
   {
     persona_id: 134890,
@@ -81,7 +81,7 @@ const MOCK_PROFESIONALES_BASE = [
     nota_clinica: 'Factor Grupal ED (25% grupal)',
     plan_directo: 245,
     meta_gestion: 220,
-    real_directo: 191,
+    real_directo: 191, // Déficit crítico (-22.0%)
   },
   {
     persona_id: 128904,
@@ -90,10 +90,10 @@ const MOCK_PROFESIONALES_BASE = [
     cod_esp: 'PSICOLOGIA',
     area: 'UNIDAD COGNITIVA Y SENSORIAL',
     cargo: 'PSICOLOGO/A CLINICO',
-    nota_clinica: 'Atención integral familiar (45 min)',
+    nota_clinica: 'Atención integral familiar (45 min/sesión)',
     plan_directo: 142,
     meta_gestion: 127,
-    real_directo: 134,
+    real_directo: 134, // Meta cumplida (94.4%)
   },
   {
     persona_id: 139102,
@@ -105,7 +105,7 @@ const MOCK_PROFESIONALES_BASE = [
     nota_clinica: 'Cuidados continuos rehabilitación',
     plan_directo: 204,
     meta_gestion: 183,
-    real_directo: 212,
+    real_directo: 212, // Superávit (+3.9%)
   },
   {
     persona_id: 132775,
@@ -117,7 +117,7 @@ const MOCK_PROFESIONALES_BASE = [
     nota_clinica: 'Factor Grupal AS (15% grupal)',
     plan_directo: 196,
     meta_gestion: 176,
-    real_directo: 182,
+    real_directo: 182, // Meta cumplida (92.9%)
   },
   {
     persona_id: 136501,
@@ -126,10 +126,10 @@ const MOCK_PROFESIONALES_BASE = [
     cod_esp: 'FISIATRIA',
     area: 'ADMISION Y SOPORTE MEDICO',
     cargo: 'MEDICO FISIATRA',
-    nota_clinica: 'Evaluación médica de ingreso',
+    nota_clinica: 'Evaluación médica ingreso y seguimiento',
     plan_directo: 172,
     meta_gestion: 154,
-    real_directo: 124,
+    real_directo: 124, // Déficit crítico (-27.9%)
   },
 ]
 
@@ -205,7 +205,7 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
           setIndividualRows(data)
         }
       } catch {
-        // fallback
+        // Fallback determinista
       } finally {
         if (active) setIsLoadingIndividual(false)
       }
@@ -218,6 +218,7 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
   }, [agrupado, filters])
 
   const activeDataset = agrupado ? planVsReal : individualRows
+  const unidadLabel = agrupado ? 'especialidades/sedes' : 'profesionales'
 
   const summary = useMemo(() => {
     let critico = 0
@@ -261,47 +262,18 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
 
   return (
     <div className="m3-view-stack">
-      {/* 1. Top KPI Strip Horizontal M3 (Compacto ~84px) */}
-      <section aria-label="Métricas Plan vs Real" className="m3-kpi-strip">
+      {/* 1. Resumen Ejecutivo de Brechas Asistenciales M3 (~84px) */}
+      <section aria-label="Resumen ejecutivo de brechas asistenciales" className="m3-kpi-strip">
+        {/* Card 1: Déficit Crítico (< 90% MG) */}
         <article className="m3-kpi-card">
           <div className="m3-kpi-card__header">
-            <span className="m3-kpi-card__label">Plan Directo (100%)</span>
-            <span className="m3-badge m3-badge--teal">Meta 90%: {summary.totalMg.toLocaleString('es-CL')}</span>
-          </div>
-          <div className="m3-kpi-card__body">
-            <h3 className="m3-kpi-card__metric tabular-nums">
-              {summary.totalPlan.toLocaleString('es-CL')}
-            </h3>
-            <span className="m3-kpi-card__sub">Atenciones Planificadas</span>
-          </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">{summary.total} {agrupado ? 'sedes/esp.' : 'profesionales'}</span>
-          </div>
-        </article>
-
-        <article className="m3-kpi-card">
-          <div className="m3-kpi-card__header">
-            <span className="m3-kpi-card__label">Real SIC</span>
-            <span className="m3-badge m3-badge--secondary">{summary.cumplimientoPct}% del Plan</span>
-          </div>
-          <div className="m3-kpi-card__body">
-            <h3 className="m3-kpi-card__metric tabular-nums">
-              {summary.totalReal.toLocaleString('es-CL')}
-            </h3>
-            <span className="m3-kpi-card__sub" style={{ color: summary.brecha >= 0 ? 'var(--teal-ink)' : 'var(--red-ink)' }}>
-              {summary.brecha >= 0 ? `+${summary.brecha.toLocaleString('es-CL')}` : summary.brecha.toLocaleString('es-CL')}
-            </span>
-          </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">Ejecución registrada</span>
-          </div>
-        </article>
-
-        <article className="m3-kpi-card">
-          <div className="m3-kpi-card__header">
-            <span className="m3-kpi-card__label">Alertas Críticas (&lt;90%)</span>
-            <span className="m3-badge" style={{ background: 'var(--md-sys-color-error-container)', color: 'var(--red-ink)' }}>
-              Prioritario
+            <span className="m3-kpi-card__label">Bajo Umbral Exigible</span>
+            <span
+              className="status-badge status-badge--critico"
+              style={{ color: 'var(--red-ink)' }}
+            >
+              <PixelAlertIcon size={13} />
+              <span>Déficit Crítico</span>
             </span>
           </div>
           <div className="m3-kpi-card__body">
@@ -309,70 +281,126 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
               {summary.critico}
             </h3>
             <span className="m3-kpi-card__sub" style={{ color: 'var(--ink-2)' }}>
-              de {summary.total} registros
+              de {summary.total} {unidadLabel}
             </span>
           </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">Bajo umbral exigible</span>
-          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Atenciones SIC por debajo de la <strong>Meta de Gestión (90%)</strong>.
+          </p>
         </article>
 
+        {/* Card 2: Meta de Gestión Cumplida (90% – 99,9%) */}
         <article className="m3-kpi-card">
           <div className="m3-kpi-card__header">
-            <span className="m3-kpi-card__label">En Meta / Superávit</span>
-            <span className="m3-badge m3-badge--teal">MG ≥ 90%</span>
+            <span className="m3-kpi-card__label">Rango Operativo</span>
+            <span
+              className="status-badge status-badge--cumplido"
+              style={{ color: 'var(--onyx)', borderColor: 'var(--amber-ink)' }}
+            >
+              <PixelCheckIcon size={13} />
+              <span>Meta 90%</span>
+            </span>
+          </div>
+          <div className="m3-kpi-card__body">
+            <h3 className="m3-kpi-card__metric tabular-nums">
+              {summary.cumplido}
+            </h3>
+            <span className="m3-kpi-card__sub" style={{ color: 'var(--amber-ink)' }}>
+              en rango 90%–99,9%
+            </span>
+          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Supera el piso exigible (<strong>MG ≥ 90%</strong>) hacia el 100% del Plan.
+          </p>
+        </article>
+
+        {/* Card 3: Superávit Asistencial (≥ 100% Plan) */}
+        <article className="m3-kpi-card">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label">Sobre Cumplimiento</span>
+            <span
+              className="status-badge status-badge--superavit"
+              style={{ color: 'var(--teal-ink)' }}
+            >
+              <PixelTrendUpIcon size={13} />
+              <span>≥ 100% Plan</span>
+            </span>
           </div>
           <div className="m3-kpi-card__body">
             <h3 className="m3-kpi-card__metric tabular-nums" style={{ color: 'var(--teal-ink)' }}>
-              {summary.cumplido + summary.superavit}
+              {summary.superavit}
             </h3>
-            <span className="m3-kpi-card__sub">
-              {summary.cumplido} meta · {summary.superavit} superávit
+            <span className="m3-kpi-card__sub" style={{ color: 'var(--teal-ink)' }}>
+              de {summary.total} {unidadLabel}
             </span>
           </div>
-          <div className="m3-kpi-card__chip-row">
-            <span className="m3-metric-chip">Operación normal</span>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Ejecución asistencial SIC igual o superior al <strong>100% Plan Directo</strong>.
+          </p>
+        </article>
+
+        {/* Card 4: Balance Consolidado Red */}
+        <article className="m3-kpi-card">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label">Cruce Plan vs. SIC</span>
+            <span className="m3-badge m3-badge--teal">
+              {summary.cumplimientoPct}% Global
+            </span>
           </div>
+          <div className="m3-kpi-card__body">
+            <h3 className="m3-kpi-card__metric tabular-nums">
+              {summary.totalReal.toLocaleString('es-CL')}
+            </h3>
+            <span className="m3-kpi-card__sub" style={{ color: summary.brecha >= 0 ? 'var(--teal-ink)' : 'var(--red-ink)' }}>
+              {summary.brecha >= 0 ? `+${summary.brecha.toLocaleString('es-CL')}` : summary.brecha.toLocaleString('es-CL')} Δ
+            </span>
+          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Plan: {summary.totalPlan.toLocaleString('es-CL')} · Meta: {summary.totalMg.toLocaleString('es-CL')}
+          </p>
         </article>
       </section>
 
       {/* 2. Main Sheet Card M3 (>80% Viewport con scroll interno) */}
-      <section aria-labelledby="pvr-sheet-heading" className="m3-sheet-card">
-        {/* Toolbar compacta M3 */}
+      <section aria-labelledby="pvr-matrix-heading" className="m3-sheet-card">
+        {/* Toolbar M3 con Nivel de Agregación y Filtro Rápido */}
         <div className="m3-sheet-card__toolbar">
           <div className="m3-sheet-card__title-box">
-            <h2 id="pvr-sheet-heading" className="m3-sheet-card__title">
-              Matriz Planificado vs. Real SIC
+            <h2 id="pvr-matrix-heading" className="m3-sheet-card__title">
+              Matriz Semántica Plan vs. Real SIC y Semáforo de Doble Codificación WCAG
             </h2>
             <span className="m3-badge m3-badge--neutral">
-              {filteredRows.length} {filteredRows.length === 1 ? 'fila' : 'filas'}
+              {filteredRows.length} {filteredRows.length === 1 ? 'registro' : 'registros'}
             </span>
           </div>
 
           <div className="m3-sheet-card__actions">
-            {/* Toggle Agrupado / Individual */}
-            <div role="group" aria-label="Nivel de vista" style={{ display: 'inline-flex', gap: '4px' }}>
+            {/* Toggle Nivel de Agrupación */}
+            <div role="group" aria-label="Nivel de vista de la matriz" style={{ display: 'inline-flex', gap: '4px' }}>
               <button
                 type="button"
                 className={`m3-chip ${agrupado ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                aria-pressed={agrupado}
                 onClick={() => setAgrupado(true)}
               >
-                Agrupado Sede/Esp.
+                Vista Agrupada por Especialidad / Sede
               </button>
               <button
                 type="button"
                 className={`m3-chip ${!agrupado ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                aria-pressed={!agrupado}
                 onClick={() => setAgrupado(false)}
               >
-                Por Profesional
+                Detalle Individual por Profesional
               </button>
             </div>
 
-            {/* Chips de filtro por estado WCAG */}
-            <div role="group" aria-label="Filtro de estado" style={{ display: 'inline-flex', gap: '4px' }}>
+            {/* Filtro Rápido por Estado WCAG con Iconos */}
+            <div role="group" aria-label="Filtrar filas por estado WCAG" style={{ display: 'inline-flex', gap: '4px' }}>
               <button
                 type="button"
                 className={`m3-chip ${statusFilter === 'TODOS' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                aria-pressed={statusFilter === 'TODOS'}
                 onClick={() => setStatusFilter('TODOS')}
               >
                 Todos ({summary.total})
@@ -381,26 +409,29 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
                 type="button"
                 className={`m3-chip ${statusFilter === 'CRITICO' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
                 style={statusFilter === 'CRITICO' ? { background: 'var(--md-sys-color-error-container)', color: 'var(--red-ink)', borderColor: 'var(--red-ink)' } : {}}
+                aria-pressed={statusFilter === 'CRITICO'}
                 onClick={() => setStatusFilter('CRITICO')}
               >
                 <PixelAlertIcon size={12} />
-                <span>Críticos ({summary.critico})</span>
+                <span>Solo Déficit Crítico &lt;90% ({summary.critico})</span>
               </button>
               <button
                 type="button"
                 className={`m3-chip ${statusFilter === 'CUMPLIDO' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                aria-pressed={statusFilter === 'CUMPLIDO'}
                 onClick={() => setStatusFilter('CUMPLIDO')}
               >
                 <PixelCheckIcon size={12} />
-                <span>En Meta ({summary.cumplido})</span>
+                <span>Meta Cumplida 90–99% ({summary.cumplido})</span>
               </button>
               <button
                 type="button"
                 className={`m3-chip ${statusFilter === 'SUPERAVIT' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                aria-pressed={statusFilter === 'SUPERAVIT'}
                 onClick={() => setStatusFilter('SUPERAVIT')}
               >
                 <PixelTrendUpIcon size={12} />
-                <span>Superávit ({summary.superavit})</span>
+                <span>Superávit ≥100% ({summary.superavit})</span>
               </button>
             </div>
 
@@ -409,7 +440,7 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
                 type="button"
                 className="m3-chip m3-chip--reset"
                 onClick={() => onChangeFilter && onChangeFilter('esp', '')}
-                title="Quitar filtro de especialidad"
+                title={`Quitar filtro de especialidad (${filters.esp})`}
               >
                 × {filters.esp}
               </button>
@@ -418,28 +449,28 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
         </div>
 
         {/* Viewport de Tabla con Scroll Interno */}
-        <div className="m3-table-viewport" tabIndex="0" role="region" aria-label="Tabla de ejecución Plan vs Real">
+        <div className="m3-table-viewport" tabIndex="0" role="region" aria-label="Matriz Plan vs Real">
           <table className="m3-data-table">
             <thead>
               <tr>
                 <th scope="col" className="m3-col-rowidx">#</th>
-                <th scope="col">Especialidad</th>
-                <th scope="col">Sede</th>
-                {!agrupado && <th scope="col">Profesional</th>}
-                <th scope="col" className="m3-col-num">Plan (100%)</th>
-                <th scope="col" className="m3-col-num">Meta (90%)</th>
-                <th scope="col" className="m3-col-num">Real (SIC)</th>
-                <th scope="col" className="m3-col-num">Brecha</th>
-                <th scope="col" className="m3-col-num">% Ejec.</th>
-                <th scope="col" style={{ width: '130px' }}>Avance</th>
-                <th scope="col">Estado</th>
+                <th scope="col">Especialidad (Cod_Esp)</th>
+                <th scope="col">Instituto / Sede</th>
+                {!agrupado && <th scope="col">Profesional (PersonaId &amp; Nota)</th>}
+                <th scope="col" className="m3-col-num">Plan Directo (100%)</th>
+                <th scope="col" className="m3-col-num">Meta de Gestión (90%)</th>
+                <th scope="col" className="m3-col-num">Atenciones Reales (SIC)</th>
+                <th scope="col" className="m3-col-num">Brecha (Real − Plan)</th>
+                <th scope="col" className="m3-col-num">% Cumplimiento</th>
+                <th scope="col" style={{ width: '135px' }}>Barra Segmentada (Marca 90%)</th>
+                <th scope="col">Estado WCAG (Icono + Badge)</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={agrupado ? 10 : 11} style={{ padding: '24px', color: 'var(--ink-2)' }}>
-                    No hay registros con el filtro seleccionado.
+                    No se encontraron registros para el filtro de estado seleccionado.
                   </td>
                 </tr>
               ) : (
@@ -450,43 +481,79 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
                   const brecha = realDir - planDir
                   const brechaSign = brecha > 0 ? '+' : brecha < 0 ? '−' : ''
                   const brechaAbs = Math.abs(brecha).toLocaleString('es-CL')
+                  const desv = Number(
+                    row.desviacion_pct ?? (planDir > 0 ? ((realDir - planDir) / planDir) * 100 : 0)
+                  )
+                  const desvSign = desv > 0 ? '+' : ''
                   const cumpl = Number(
                     row.cumplimiento_pct ?? (planDir > 0 ? (realDir / planDir) * 100 : 0)
                   )
                   const isCritico = row.alerta?.nivel === 'CRITICO'
 
                   return (
-                    <tr key={`${row.cod_esp}-${row.it || 'nac'}-${row.persona_id || idx}`} className={isCritico ? 'm3-row--error' : ''}>
+                    <tr
+                      key={`${row.cod_esp}-${row.it || 'nac'}-${row.persona_id || idx}`}
+                      className={isCritico ? 'm3-row--error' : ''}
+                    >
                       <td className="m3-col-rowidx">{idx + 1}</td>
                       <td className="m3-cell-title">
                         <button
                           type="button"
                           className="m3-chip m3-chip--link"
                           style={{ padding: 0, fontWeight: 700, fontSize: '0.82rem' }}
-                          onClick={() => onChangeFilter && onChangeFilter('esp', filters.esp === row.cod_esp ? '' : row.cod_esp)}
+                          title={`Filtrar globalmente por especialidad ${row.cod_esp}`}
+                          onClick={() =>
+                            onChangeFilter &&
+                            onChangeFilter('esp', filters.esp === row.cod_esp ? '' : row.cod_esp)
+                          }
                         >
                           {row.cod_esp}
                         </button>
                       </td>
                       <td>
                         <strong>{row.sigla || 'NAC'}</strong>
-                        {row.it ? <span className="m3-text-muted" style={{ marginLeft: '4px', fontSize: '0.72rem' }}>({row.it})</span> : null}
+                        {row.it ? (
+                          <span className="m3-text-muted" style={{ marginLeft: '4px', fontSize: '0.72rem' }}>
+                            (IT {row.it})
+                          </span>
+                        ) : null}
                       </td>
                       {!agrupado && (
                         <td>
-                          <span className="tabular-nums font-bold">#{row.persona_id}</span>
-                          {row.nota_clinica && <span className="m3-text-muted" style={{ display: 'block', fontSize: '0.7rem' }}>{row.nota_clinica}</span>}
+                          <span className="tabular-nums font-bold">#{row.persona_id || 'S/I'}</span>
+                          {row.nota_clinica && (
+                            <span className="m3-text-muted" style={{ display: 'block', fontSize: '0.7rem' }}>
+                              {row.nota_clinica}
+                            </span>
+                          )}
                         </td>
                       )}
                       <td className="m3-col-num tabular-nums">{planDir.toLocaleString('es-CL')}</td>
                       <td className="m3-col-num tabular-nums">{mgDir.toLocaleString('es-CL')}</td>
                       <td className="m3-col-num tabular-nums font-bold">{realDir.toLocaleString('es-CL')}</td>
-                      <td className="m3-col-num tabular-nums font-bold" style={{ color: brecha < 0 ? 'var(--red-ink)' : brecha > 0 ? 'var(--teal-ink)' : 'inherit' }}>
-                        {brechaSign}{brechaAbs}
+                      <td
+                        className="m3-col-num tabular-nums font-bold"
+                        style={{
+                          color:
+                            brecha < 0
+                              ? 'var(--red-ink)'
+                              : brecha > 0
+                              ? 'var(--teal-ink)'
+                              : 'inherit',
+                        }}
+                      >
+                        {brechaSign}{brechaAbs}{' '}
+                        <span style={{ fontSize: '0.72rem', fontWeight: 500 }}>
+                          ({desvSign}{desv.toFixed(1)}%)
+                        </span>
                       </td>
                       <td className="m3-col-num tabular-nums font-bold">{cumpl.toFixed(1)}%</td>
                       <td>
-                        <SegmentedBar valuePct={cumpl} targetPct={90} variant={isCritico ? 'alert' : 'default'} />
+                        <SegmentedBar
+                          valuePct={cumpl}
+                          targetPct={90}
+                          variant={isCritico ? 'alert' : 'default'}
+                        />
                       </td>
                       <td>
                         <PixelStatusBadge nivel={row.alerta?.nivel} texto={row.alerta?.badge} />
