@@ -4,6 +4,7 @@ import {
   PixelCheckIcon,
   PixelTrendUpIcon,
   PixelStatusBadge,
+  PixelBookIcon,
 } from '../components/PixelIcons.jsx'
 import SegmentedBar from '../components/SegmentedBar.jsx'
 import { classifyWcagAlert, MOCK_INSTITUTOS } from '../api.js'
@@ -173,7 +174,7 @@ function buildMockIndividualPlanVsReal(filters = {}) {
   })
 }
 
-export default function PlanVsRealView({ planVsReal = [], filters = {}, onChangeFilter }) {
+export default function PlanVsRealView({ planVsReal = [], filters = {}, onChangeFilter, easyReading = false }) {
   const [agrupado, setAgrupado] = useState(true)
   const [statusFilter, setStatusFilter] = useState('TODOS')
   const [individualRows, setIndividualRows] = useState(() =>
@@ -262,6 +263,21 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
 
   return (
     <div className="m3-view-stack">
+      {/* Tarjeta de Lectura Fácil (Comprensión Cognitiva) */}
+      <div className="easy-reading-card" role="region" aria-label="Explicación en lenguaje claro">
+        <h3 className="easy-reading-card__title">
+          <PixelBookIcon size={14} />
+          <span>Lectura Fácil: ¿Qué es Planificado vs. Real SIC?</span>
+        </h3>
+        <p className="easy-reading-card__text">
+          Compara las atenciones programadas para cada especialidad con las que efectivamente se realizaron en las clínicas.
+          El semáforo accesible utiliza tres estados claros con ícono y texto:
+          <strong> [Cumplido]</strong> (se alcanzó la meta de atención),
+          <strong> [Déficit Crítico]</strong> (faltaron atenciones para alcanzar el 90%), y
+          <strong> [Superávit]</strong> (se realizaron más atenciones de las esperadas).
+        </p>
+      </div>
+
       {/* 1. Resumen Ejecutivo de Brechas Asistenciales M3 (~84px) */}
       <section aria-label="Resumen ejecutivo de brechas asistenciales" className="m3-kpi-strip">
         {/* Card 1: Déficit Crítico (< 90% MG) */}

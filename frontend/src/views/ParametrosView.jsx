@@ -4,6 +4,7 @@ import {
   PixelAlertIcon,
   PixelTrendUpIcon,
   PixelResetIcon,
+  PixelBookIcon,
 } from '../components/PixelIcons.jsx'
 import { StackedHoursBar } from '../components/SegmentedBar.jsx'
 
@@ -171,7 +172,7 @@ function buildFallbackSimulation({
   }
 }
 
-export default function ParametrosView({ onAnnounce }) {
+export default function ParametrosView({ onAnnounce, easyReading = false }) {
   const [distribucion, setDistribucion] = useState(INITIAL_DISTRIBUCION)
   const [asignaciones, setAsignaciones] = useState(INITIAL_ASIGNACIONES)
   const [grupal, setGrupal] = useState(INITIAL_GRUPAL)
@@ -345,6 +346,18 @@ export default function ParametrosView({ onAnnounce }) {
 
   return (
     <div className="m3-view-stack">
+      {/* Tarjeta de Lectura Fácil (Comprensión Cognitiva) */}
+      <div className="easy-reading-card" role="region" aria-label="Explicación en lenguaje claro">
+        <h3 className="easy-reading-card__title">
+          <PixelBookIcon size={14} />
+          <span>Lectura Fácil: ¿Qué es el Simulador de Reglas y Parámetros?</span>
+        </h3>
+        <p className="easy-reading-card__text">
+          Esta pantalla permite cambiar las reglas de trabajo (como el porcentaje de tiempo con pacientes o los minutos por consulta) y simular el impacto antes de guardar.
+          Los cambios se aplican solo a futuro, asegurando que los meses anteriores nunca se modifiquen por accidente.
+        </p>
+      </div>
+
       {/* 1. Top KPI Strip Horizontal M3 (~84px) */}
       <section aria-label="Métricas de Parametrización y Simulación" className="m3-kpi-strip">
         <article className="m3-kpi-card">
@@ -562,6 +575,10 @@ export default function ParametrosView({ onAnnounce }) {
                     step="1"
                     value={pctDir}
                     onChange={(e) => setPctDir(Number(e.target.value))}
+                    aria-label="% Horas Directas con Pacientes"
+                    aria-valuemin="40"
+                    aria-valuemax="90"
+                    aria-valuenow={pctDir}
                     style={{ width: '100%', accentColor: 'var(--teal-ink)' }}
                   />
                   <span style={{ fontSize: '0.7rem', color: 'var(--ink-2)', marginTop: '4px', display: 'block' }}>
@@ -581,6 +598,10 @@ export default function ParametrosView({ onAnnounce }) {
                     step="1"
                     value={pctInd}
                     onChange={(e) => setPctInd(Number(e.target.value))}
+                    aria-label="% Horas Indirectas de Gestión"
+                    aria-valuemin="5"
+                    aria-valuemax="35"
+                    aria-valuenow={pctInd}
                     style={{ width: '100%', accentColor: 'var(--turquoise)' }}
                   />
                   <span style={{ fontSize: '0.7rem', color: 'var(--ink-2)', marginTop: '4px', display: 'block' }}>

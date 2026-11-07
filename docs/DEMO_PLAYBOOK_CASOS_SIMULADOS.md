@@ -43,14 +43,18 @@ Valores extraídos y certificados por la suite de pruebas unitarias y E2E (`test
 
 ## 3. Guion Paso a Paso para la Demo (5 Minutos)
 
-### Paso 1: Dashboard Inicial y Accesibilidad WCAG (1:00 min)
-- **Acción:** Abrir dashboard web (`http://localhost:8000`). Navegar **exclusivamente con teclado** (`Tab`, `Shift+Tab`, flechas en `role="tablist"`).
-- **Qué mostrar:**
+### Paso 1: Dashboard Inicial y Accesibilidad Universal Inclusiva (Rúbrica D6 Destacado) (1:00 min)
+- **Acción:** Abrir dashboard web (`http://localhost:8000`). Navegar **exclusivamente con teclado utilizando solo `Tab` y `Enter`**.
+- **Qué mostrar para la Rúbrica Dimensión 6 (Impacto e Inclusión - Destacado):**
+  - **Navegación 100% Tab + Enter:** recorrer skip links, herramientas de accesibilidad, navigation rail y filtros sin ratón.
+  - **Voz Asistencial en Vivo (Web Speech API):** pulsar `Enter` en el botón `Escuchar Voz` de la barra superior; el sistema narra en español los KPIs asistenciales y el estado operativo.
+  - **Modo Lectura Fácil:** pulsar `Enter` en `Lectura Fácil` para activar tarjetas explicativas en lenguaje claro sin siglas médicas crípticas (comprensión cognitiva).
+  - **Modo Alto Contraste AAA (>7:1):** alternar para personas con baja visión con focus ring nítido de 3px.
   - Pestaña **Resumen Asistencial**: Tarjetas KPI `% FOJA` (**61,27%**), `Meta de Gestión 90%` (**238.292** atenciones), `Plan Mensual` (**265.752** dir / **333.579** tot) y desglose de horas semanales (Directa **40.665,8h** / Indirecta **8.354,4h** / NAS **17.346,3h**).
   - Filtro multinivel: seleccionar instituto (ej. Arica `IT=11` o Santiago `IT=131`), mes `2026-04`.
-  - BotStatusBar: muestra estado del bot en tiempo real ("Inactivo - Último lote #1 OK").
+  - BotStatusBar: muestra estado del bot en tiempo real ("RPA #104 (1420ms) | 3.123 válidos | 6 rechazados").
 - **Frase clave del presentador:**
-  > *"Navegamos 100% por teclado bajo WCAG 2.1 AA. El % FOJA del 61,27% y las metas institucionales se calculan en milisegundos con doble piso truncado por regla asistencial."*
+  > *"Navegamos 100% por teclado con solo Tab y Enter. Nuestra solución cumple la dimensión de accesibilidad de la rúbrica al máximo nivel con síntesis de voz interactiva, modo lectura fácil para comprensión cognitiva y alto contraste AAA. El % FOJA del 61,27% y las metas institucionales se calculan en tiempo real con estricto piso legal."*
 
 ---
 

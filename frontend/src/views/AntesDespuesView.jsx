@@ -3,6 +3,7 @@ import {
   PixelCheckIcon,
   PixelTrendUpIcon,
   PixelAlertIcon,
+  PixelBookIcon,
 } from '../components/PixelIcons.jsx'
 import {
   MOCK_INSTITUTOS,
@@ -108,7 +109,7 @@ function renderTipoDeltaBadge(tipoDelta, horasAntes, horasDespues) {
   )
 }
 
-export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
+export default function AntesDespuesView({ filters = {}, onChangeFilter, easyReading = false }) {
   const [periodoCorte, setPeriodoCorte] = useState('2026-05-01')
   const [selectedIt, setSelectedIt] = useState(filters.instituto || '')
   const [selectedDeltaType, setSelectedDeltaType] = useState('TODOS')
@@ -213,6 +214,19 @@ export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
     <div className="m3-view-stack">
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {liveStatus}
+      </div>
+
+      {/* Tarjeta de Lectura Fácil (Comprensión Cognitiva) */}
+      <div className="easy-reading-card" role="region" aria-label="Explicación en lenguaje claro">
+        <h3 className="easy-reading-card__title">
+          <PixelBookIcon size={14} />
+          <span>Lectura Fácil: ¿Qué es la transición Antes / Después?</span>
+        </h3>
+        <p className="easy-reading-card__text">
+          En mayo de 2026 comenzó a regir la ley chilena que reduce la jornada de 44 a 42 horas semanales.
+          Esta pantalla demuestra que los meses anteriores (enero a abril) permanecen congelados e inalterados,
+          y que a partir de mayo las horas se ajustan automáticamente a 42 horas sin tocar las remuneraciones.
+        </p>
       </div>
 
       {/* 1. Top KPI Strip Horizontal M3 (~84px) */}

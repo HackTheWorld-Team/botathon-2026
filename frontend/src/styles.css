@@ -150,27 +150,27 @@ pre {
   border: 0;
 }
 
-/* Foco universal visible WCAG 2.1 AA */
+/* Foco universal visible reforzado WCAG 2.1 AA / AAA (Navegación 100% con Tab y Enter) */
 :focus-visible,
 h2[tabindex="-1"]:focus {
-  outline: 2.5px solid var(--md-sys-color-primary) !important;
+  outline: 3px solid var(--teal-ink) !important;
   outline-offset: 2px !important;
 }
 
-/* Skip Link */
+/* Skip Links Accesibles Múltiples */
 .skip-link {
   position: absolute;
   left: -9999px;
   top: 6px;
   z-index: 1000;
-  background: var(--white);
-  color: var(--md-sys-color-primary);
+  background: var(--onyx);
+  color: var(--white);
   font-weight: 700;
   text-decoration: underline;
   padding: 6px 14px;
-  border: 1px solid var(--md-sys-color-outline);
+  border: 2px solid var(--teal-ink);
   border-radius: var(--md-shape-full);
-  box-shadow: var(--md-elevation-1);
+  box-shadow: var(--md-elevation-2);
 }
 
 .skip-link:focus {
@@ -1471,3 +1471,150 @@ h2[tabindex="-1"]:focus {
     animation: none !important;
   }
 }
+
+/* ==========================================================================
+   10. Barra de Accesibilidad Universal Teletón (Rúbrica Dimensión 6)
+   ========================================================================== */
+.m3-a11y-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.m3-a11y-btn {
+  height: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border-radius: var(--md-shape-full);
+  border: 1px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface);
+  color: var(--onyx);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.m3-a11y-btn:hover {
+  background: var(--md-sys-color-surface-container-high);
+}
+
+.m3-a11y-btn--active {
+  background: var(--teal-ink) !important;
+  color: var(--white) !important;
+  border-color: var(--teal-ink) !important;
+}
+
+.m3-a11y-btn--active .pixel-icon path,
+.m3-a11y-btn--active .pixel-icon rect {
+  fill: var(--white) !important;
+}
+
+/* Escala de texto accesible */
+html.font-scale-100 {
+  font-size: 16px;
+}
+
+html.font-scale-125 {
+  font-size: 18px;
+}
+
+html.font-scale-150 {
+  font-size: 20px;
+}
+
+/* Tarjeta explicativa de Lectura Fácil (Comprensión Cognitiva) */
+.easy-reading-card {
+  display: none;
+  background: rgba(143, 231, 222, 0.18);
+  border: 2px solid var(--teal-ink);
+  border-radius: var(--md-shape-md);
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  color: var(--onyx);
+}
+
+.easy-reading-mode .easy-reading-card {
+  display: block !important;
+  animation: m3FadeIn 180ms ease-out;
+}
+
+.easy-reading-card__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--teal-ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px 0;
+}
+
+.easy-reading-card__text {
+  font-size: 0.76rem;
+  line-height: 1.4;
+  margin: 0;
+  color: var(--onyx);
+}
+
+/* Tema de Alto Contraste AAA (> 7:1) para Baja Visión */
+html.theme-high-contrast-aaa {
+  --md-sys-color-surface: #000000;
+  --md-sys-color-surface-container-low: #0a0a0a;
+  --md-sys-color-surface-container: #121212;
+  --md-sys-color-surface-container-high: #1a1a1a;
+  --md-sys-color-on-surface: #ffffff;
+  --md-sys-color-on-surface-variant: #ffffff;
+  --md-sys-color-outline: #ffffff;
+  --md-sys-color-outline-variant: #888888;
+  --white: #000000;
+  --onyx: #ffffff;
+  --teal-ink: #8fe7de;
+  --red-ink: #ff6b6b;
+  --ink-2: #e0e0e0;
+}
+
+html.theme-high-contrast-aaa body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+html.theme-high-contrast-aaa .m3-top-app-bar,
+html.theme-high-contrast-aaa .m3-nav-rail,
+html.theme-high-contrast-aaa .m3-filter-strip,
+html.theme-high-contrast-aaa .m3-kpi-card,
+html.theme-high-contrast-aaa .m3-sheet-card,
+html.theme-high-contrast-aaa .m3-footer,
+html.theme-high-contrast-aaa .m3-chip,
+html.theme-high-contrast-aaa .m3-select-pill select {
+  border-color: #ffffff !important;
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+html.theme-high-contrast-aaa .pixel-icon path,
+html.theme-high-contrast-aaa .pixel-icon rect {
+  fill: #ffffff !important;
+}
+
+html.theme-high-contrast-aaa .m3-data-table th,
+html.theme-high-contrast-aaa .m3-data-table td {
+  color: #ffffff !important;
+  border-color: #555555 !important;
+}
+
+html.theme-high-contrast-aaa .m3-data-table thead th {
+  background: #111111 !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid #ffffff !important;
+}
+
+html.theme-high-contrast-aaa :focus-visible {
+  outline: 3.5px solid #ffeb3b !important;
+  outline-offset: 3px !important;
+}
+

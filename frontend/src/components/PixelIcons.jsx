@@ -183,6 +183,96 @@ export function PixelDownloadIcon({ size = 15, className = '' }) {
   )
 }
 
+export function PixelSpeakerIcon({ size = 15, playing = false, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+      focusable="false"
+      className={`pixel-icon ${className}`}
+    >
+      <rect x="2" y="5" width="3" height="6" fill="#121313" />
+      <rect x="5" y="4" width="2" height="8" fill="#121313" />
+      <rect x="7" y="2" width="2" height="12" fill="#121313" />
+      {playing ? (
+        <>
+          <rect x="11" y="4" width="2" height="2" fill="#121313" />
+          <rect x="13" y="6" width="2" height="4" fill="#121313" />
+          <rect x="11" y="10" width="2" height="2" fill="#121313" />
+        </>
+      ) : (
+        <>
+          <rect x="11" y="6" width="2" height="4" fill="#121313" />
+        </>
+      )}
+    </svg>
+  )
+}
+
+export function PixelBookIcon({ size = 15, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+      focusable="false"
+      className={`pixel-icon ${className}`}
+    >
+      <rect x="2" y="2" width="5" height="11" fill="#121313" />
+      <rect x="9" y="2" width="5" height="11" fill="#121313" />
+      <rect x="7" y="3" width="2" height="11" fill="#121313" />
+      <rect x="3" y="4" width="3" height="2" fill="#ffffff" />
+      <rect x="10" y="4" width="3" height="2" fill="#ffffff" />
+      <rect x="3" y="7" width="3" height="2" fill="#ffffff" />
+      <rect x="10" y="7" width="3" height="2" fill="#ffffff" />
+    </svg>
+  )
+}
+
+export function PixelContrastIcon({ size = 15, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+      focusable="false"
+      className={`pixel-icon ${className}`}
+    >
+      <rect x="4" y="2" width="8" height="2" fill="#121313" />
+      <rect x="4" y="12" width="8" height="2" fill="#121313" />
+      <rect x="2" y="4" width="2" height="8" fill="#121313" />
+      <rect x="12" y="4" width="2" height="8" fill="#121313" />
+      <rect x="8" y="4" width="4" height="8" fill="#121313" />
+    </svg>
+  )
+}
+
+export function PixelTextSizeIcon({ size = 15, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      shapeRendering="crispEdges"
+      aria-hidden="true"
+      focusable="false"
+      className={`pixel-icon ${className}`}
+    >
+      <rect x="2" y="2" width="6" height="2" fill="#121313" />
+      <rect x="4" y="4" width="2" height="10" fill="#121313" />
+      <rect x="9" y="6" width="5" height="2" fill="#121313" />
+      <rect x="11" y="8" width="2" height="6" fill="#121313" />
+    </svg>
+  )
+}
+
 export function PixelStatusBadge({ nivel, texto }) {
   if (nivel === 'CRITICO') {
     return (

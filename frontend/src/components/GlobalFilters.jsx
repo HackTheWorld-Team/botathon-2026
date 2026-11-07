@@ -42,6 +42,7 @@ export default function GlobalFilters({
 
   return (
     <section
+      id="filtros-globales"
       aria-label="Filtros globales y alcance de datos"
       className="m3-filter-strip"
       onKeyDown={handleKeyDown}

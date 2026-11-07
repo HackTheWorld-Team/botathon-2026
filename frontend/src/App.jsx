@@ -21,6 +21,7 @@ import {
 import { BrandStackIcons, TabSimpleIcon } from './components/PixelIcons.jsx'
 import BotStatusBar from './components/BotStatusBar.jsx'
 import GlobalFilters from './components/GlobalFilters.jsx'
+import A11yToolbar from './components/A11yToolbar.jsx'
 import ResumenView from './views/ResumenView.jsx'
 import AntesDespuesView from './views/AntesDespuesView.jsx'
 import ParametrosView from './views/ParametrosView.jsx'
@@ -55,7 +56,39 @@ export default function App() {
   const [liveMessage, setLiveMessage] = useState('')
   const [alertMessage, setAlertMessage] = useState('')
 
+  // Estados de Accesibilidad Universal (Rúbrica Dimensión 6)
+  const [easyReading, setEasyReading] = useState(false)
+  const [highContrast, setHighContrast] = useState(false)
+  const [fontScale, setFontScale] = useState('100') // '100' | '125' | '150'
+
   const tabRefs = useRef({})
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+    root.classList.remove('font-scale-100', 'font-scale-125', 'font-scale-150')
+    root.classList.add(`font-scale-${fontScale}`)
+  }, [fontScale])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+    if (highContrast) {
+      root.classList.add('theme-high-contrast-aaa')
+    } else {
+      root.classList.remove('theme-high-contrast-aaa')
+    }
+  }, [highContrast])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+    if (easyReading) {
+      root.classList.add('easy-reading-mode')
+    } else {
+      root.classList.remove('easy-reading-mode')
+    }
+  }, [easyReading])
 
   useEffect(() => {
     replaceFiltersHash(activeTab, filters)
@@ -169,6 +202,12 @@ export default function App() {
   }, [activeTab])
 
   function handleTabKeyDown(e, index) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleSelectTab(VALID_TABS[index], true)
+      return
+    }
+
     let targetIndex = null
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
       targetIndex = (index + 1) % VALID_TABS.length
@@ -189,9 +228,6 @@ export default function App() {
       if (btn) btn.focus()
       const meta = TAB_META[nextTab]
       setLiveMessage(`Pestaña seleccionada: ${meta.label}. Presione Enter para ir al panel.`)
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      focusPanelHeading(VALID_TABS[index])
     }
   }
 
@@ -199,6 +235,16 @@ export default function App() {
 
   return (
     <div className="m3-app-shell">
+      {/* Skip Links Accesibles para Navegación Rápida con Tab y Enter */}
+      <a className="skip-link" href="#a11y-toolbar-region">
+        Saltar a accesibilidad (Voz / Lectura Fácil / Alto Contraste)
+      </a>
+      <a className="skip-link" href="#nav-rail">
+        Saltar a navegación de pestañas
+      </a>
+      <a className="skip-link" href="#filtros-globales">
+        Saltar a filtros globales
+      </a>
       <a className="skip-link" href="#contenido-principal">
         Saltar al contenido principal
       </a>
@@ -210,7 +256,7 @@ export default function App() {
         {alertMessage}
       </div>
 
-      {/* 1. Top App Bar Delgada M3 (44px) */}
+      {/* 1. Top App Bar M3 Compacta (44px) con Barra de Accesibilidad Integrada */}
       <header className="m3-top-app-bar" role="banner">
         <h1 className="sr-only">
           Teletón · Planificación Asistencial 2026
@@ -219,7 +265,42 @@ export default function App() {
         <div className="m3-top-app-bar__start">
           <span className="m3-brand-badge">BOTATHON 2026</span>
           <BrandStackIcons size={13} />
-          <span className="m3-badge m3-badge--neutral">WCAG 2.1 AA</span>
+          <span className="m3-badge m3-badge--neutral">WCAG 2.1 AA / AAA</span>
+        </div>
+
+        {/* Herramientas de Accesibilidad Universal (Rúbrica Dimensión 6) */}
+        <div id="a11y-toolbar-region" className="m3-top-app-bar__center">
+          <A11yToolbar
+            kpis={kpis}
+            activeTabLabel={TAB_META[activeTab]?.label || 'Resumen'}
+            periodoLabel={filters.mes ? PERIODO_LABELS[filters.mes] || filters.mes : 'Anual 2026'}
+            institutoLabel={
+              filters.instituto
+                ? `Instituto ${filters.instituto}`
+                : 'Red Nacional Teletón'
+            }
+            onAnnounce={(msg) => setLiveMessage(msg)}
+            easyReading={easyReading}
+            onToggleEasyReading={() => {
+              setEasyReading((prev) => !prev)
+              setLiveMessage(
+                !easyReading
+                  ? 'Modo Lectura Fácil activado. Se muestran explicaciones en lenguaje claro.'
+                  : 'Modo Lectura Fácil desactivado.'
+              )
+            }}
+            highContrast={highContrast}
+            onToggleHighContrast={() => {
+              setHighContrast((prev) => !prev)
+              setLiveMessage(
+                !highContrast
+                  ? 'Modo Alto Contraste AAA activado (contraste mayor a 7 a 1).'
+                  : 'Modo Alto Contraste desactivado.'
+              )
+            }}
+            fontScale={fontScale}
+            onChangeFontScale={(scale) => setFontScale(scale)}
+          />
         </div>
 
         <div className="m3-top-app-bar__end">
@@ -232,8 +313,9 @@ export default function App() {
 
       {/* 2. Layout Principal: Navigation Rail (68px) + Main Canvas */}
       <div className="m3-workspace-layout">
-        {/* Navigation Rail M3 Lateral */}
+        {/* Navigation Rail M3 Lateral — 100% Navegable con Tab y Enter */}
         <nav
+          id="nav-rail"
           className="m3-nav-rail"
           aria-label="Navegación principal del dashboard"
         >
@@ -253,11 +335,11 @@ export default function App() {
                   aria-selected={isSelected}
                   aria-controls={`panel-${tabId}`}
                   aria-current={isSelected ? 'page' : undefined}
-                  tabIndex={isSelected ? 0 : -1}
+                  tabIndex={0}
                   className={`m3-nav-rail__item ${isSelected ? 'm3-nav-rail__item--active' : ''}`}
                   onClick={() => handleSelectTab(tabId, true)}
                   onKeyDown={(e) => handleTabKeyDown(e, index)}
-                  title={meta.title}
+                  title={`${meta.title} (Presione Enter para ver)`}
                 >
                   <span className="m3-nav-rail__indicator">
                     <TabSimpleIcon tabId={tabId} size={18} />
@@ -295,6 +377,7 @@ export default function App() {
                   filters={filters}
                   onChangeFilter={handleChangeFilter}
                   onSelectTab={(t) => handleSelectTab(t, true)}
+                  easyReading={easyReading}
                 />
               )}
 
@@ -302,6 +385,7 @@ export default function App() {
                 <AntesDespuesView
                   filters={filters}
                   onChangeFilter={handleChangeFilter}
+                  easyReading={easyReading}
                 />
               )}
 
@@ -311,6 +395,7 @@ export default function App() {
                     setLiveMessage(msg)
                     setAlertMessage('')
                   }}
+                  easyReading={easyReading}
                 />
               )}
 
@@ -319,18 +404,24 @@ export default function App() {
                   planVsReal={planVsReal}
                   filters={filters}
                   onChangeFilter={handleChangeFilter}
+                  easyReading={easyReading}
                 />
               )}
 
-              {activeTab === 'lotes' && <LotesView lotes={lotes} />}
+              {activeTab === 'lotes' && (
+                <LotesView
+                  lotes={lotes}
+                  easyReading={easyReading}
+                />
+              )}
             </div>
           </main>
         </div>
       </div>
 
-      {/* 3. Footer Minimalista */}
+      {/* 3. Footer Minimalista con atajos e información accesible */}
       <footer className="m3-footer" role="contentinfo">
-        <span>Teletón · Botathon 2026 · Material You High-Density</span>
+        <span>Teletón · Botathon 2026 · Navegación Universal accesible con Tab y Enter</span>
       </footer>
     </div>
   )

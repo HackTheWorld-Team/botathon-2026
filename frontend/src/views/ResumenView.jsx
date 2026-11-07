@@ -6,6 +6,7 @@ import {
   PixelTrendUpIcon,
   PixelStatusBadge,
   PixelExcelIcon,
+  PixelBookIcon,
 } from '../components/PixelIcons.jsx'
 
 /**
@@ -22,6 +23,7 @@ export default function ResumenView({
   filters = {},
   onChangeFilter,
   onSelectTab,
+  easyReading = false,
 }) {
   const hCont = Number(kpis?.horas_contratadas_semanales || 0)
   const hDir = Number(kpis?.horas_directas_semanales || 0)
@@ -52,6 +54,19 @@ export default function ResumenView({
       <h2 id="panel-heading-resumen" tabIndex="-1" className="sr-only">
         Resumen Ejecutivo Asistencial
       </h2>
+
+      {/* Tarjeta de Lectura Fácil (Comprensión Cognitiva) */}
+      <div className="easy-reading-card" role="region" aria-label="Explicación en lenguaje claro">
+        <h3 className="easy-reading-card__title">
+          <PixelBookIcon size={14} />
+          <span>Lectura Fácil: ¿Qué significan estos números?</span>
+        </h3>
+        <p className="easy-reading-card__text">
+          Esta pantalla resume el trabajo de los médicos y terapeutas de Teletón en todo Chile.
+          El <strong>% FOJA</strong> indica cuánto tiempo se dedica a atender niños y jóvenes directamente (meta recomendada: al menos 65%).
+          La <strong>Meta de Gestión (90%)</strong> es la cantidad mínima obligatoria de atenciones a cumplir cada mes.
+        </p>
+      </div>
 
       {/* 1. KPI Strip Horizontal Superior (Material 3 High Density Strip) */}
       <section
