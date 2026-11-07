@@ -9,6 +9,7 @@
 | D7 | 07-nov ~01:00 | **100% local en PC del líder; VM del evento descartada** | Vigente (v2) |
 | D10 | 07-nov ~01:00 | Blue Prism manual + híbrido (worker Python) | Vigente |
 | D11 | 07-nov ~02:15 | Motor asistencial desacoplado en funciones puras + caché SQLite | Vigente |
+| D12 | 07-nov ~03:25 | Endpoints FastAPI (/api/kpis, /api/plan, /api/plan-vs-real, /api/lotes) con agregación SQLite y alertas WCAG 2.1 AA | Vigente |
 | D9 | 07-nov ~00:30 | Demo con IA generativa (Claude vs Gemini por decidir) | Pendiente elección |
 
 ---
@@ -55,6 +56,13 @@
 - **Consecuencias:** desacoplamiento absoluto de BD para pruebas unitarias instantáneas; interoperabilidad directa tanto para el bot worker (CLI offline) como para los endpoints de FastAPI; validación matemática 100% en verde con `tests/test_motor.py`.
 - **Decidió:** Dev B (isabelrosemc) asistida por Antigravity — 07-nov ~02:15.
 
+## ADR-007 — Endpoints FastAPI asistenciales y doble codificación WCAG (D12)
+
+- **Contexto:** el Dashboard accesible requiere KPIs consolidados (% FOJA, horas agregadas, meta 90%), dotación paginada y cruce Plan vs. Real con latencias inferiores a 300ms y alertas conformes a WCAG 2.1 AA (Issue #20).
+- **Decisión:** implementar `backend/main.py` sobre FastAPI con agregaciones nativas en SQLite bajo WAL mode; soportar filtros multinivel (`it`, `periodo`, `cargo`, `area`, `cod_esp`) y entregar semáforo en `/api/plan-vs-real` con doble codificación obligatoria (etiquetas textuales explícitas + íconos vectoriales + badges: CRITICO, CUMPLIDO, SUPERAVIT) tanto agrupado como desagrupado.
+- **Consecuencias:** respuestas en <20ms locales; tolerancia a estado cero sin caídas (0 contratos = ceros estructurados); desacoplamiento de entorno vía `BOTATHON_DB_PATH`; 9/9 pruebas unitarias automatizadas con `TestClient`.
+- **Decidió:** Líder y Dev B asistidos por Antigravity — 07-nov ~03:25.
+
 ---
 
-*(Nuevas decisiones se agregan como ADR-007, ADR-008… con fecha y quién decidió.)*
+*(Nuevas decisiones se agregan como ADR-008, ADR-009… con fecha y quién decidió.)*
