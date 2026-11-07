@@ -870,6 +870,143 @@ h2[tabindex="-1"]:focus {
 }
 
 /* ==========================================================================
+   Vistas Lotes (#48) y Antes/Después (#47) — Componentes Pixel-Zen Accesibles
+   ========================================================================== */
+.lote-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.row-selected-lote {
+  background: var(--pearl-tint);
+}
+
+.lote-detail-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.rule-card {
+  background: var(--white);
+  border: 2px solid var(--onyx);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rule-card--has-errors {
+  border-color: var(--racing-red);
+}
+
+.rule-card--active {
+  background: var(--pearl-tint);
+  box-shadow: var(--shadow-tab);
+}
+
+.rule-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rule-card__code {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--onyx);
+  background: var(--pearl-aqua);
+  border: 1px solid var(--onyx);
+  padding: 2px 6px;
+}
+
+.rule-card__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--onyx);
+}
+
+.rule-card__origin {
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+}
+
+.rule-card__desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink-2);
+  flex: 1;
+}
+
+.rule-card__footer {
+  margin-top: 4px;
+}
+
+.empty-state-box {
+  background: var(--pearl-tint);
+  border: 2px solid var(--onyx);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.empty-state-box__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--onyx);
+}
+
+.demo-presets-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.delta-selectors-grid {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.non-retroactive-banner {
+  background: var(--pearl-tint);
+  border: 2px solid var(--onyx);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.non-retroactive-banner__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.non-retroactive-banner__text {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--onyx);
+}
+
+/* ==========================================================================
    Footer
    ========================================================================== */
 .app-footer {
