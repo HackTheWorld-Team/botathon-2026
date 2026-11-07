@@ -425,6 +425,8 @@ gantt
 
 **Orden crítico de arranque:** Dev A: `#13 → #11 → #15 → #14 → #12 → #28` · Dev B: `#16 → #17 → #18 → #19 → #20 → #21 → #23/#24 → #25–#27` · Líder: `#29 → #30 → #31 → QA → #32`.
 
+**Etiquetas de prioridad (07-nov ~01:40):** `prio:p0` = cabezas de cadena, hacer ya (#11 #13 #16 #17 #29) · `prio:p1` = Must siguientes (#14 #15 #18 #19 #20 #23 #24 #25 #30 #32 #33) · `prio:p2` = Should o programados al final (#12 #21 #26 #27 #28 #31 #34) · `prio:p3` = Could (#22). MoSCoW del §8 como labels `must`/`should`/`could` en cada issue (épicas incluidas). Los 7 derivables a IA ya (#12 #13 #14 #16 #19 #23 #29) pasaron el DoR del pipeline (título conventional-commit + acceptance criteria) y están en cola (`scc:queued`, assignee = líder).
+
 ---
 
 ## 11. Riesgos
