@@ -15,6 +15,7 @@
 | D9 | 07-nov ~00:30 | Demo con IA generativa (Claude vs Gemini por decidir) | Pendiente elección |
 | D10 | 07-nov ~01:00 | Blue Prism manual + híbrido (worker Python) | Vigente |
 | D11 | 07-nov ~02:15 | Motor asistencial desacoplado en funciones puras + caché SQLite | Vigente |
+| D12 | 07-nov ~03:25 | Endpoints FastAPI (/api/kpis, /api/plan, /api/plan-vs-real, /api/lotes) con agregación SQLite y alertas WCAG 2.1 AA | Vigente |
 
 ---
 
@@ -102,6 +103,13 @@
 - **Consecuencias:** cumplimiento de la rúbrica; transparencia; el líder elige el modelo antes de las 07:00.
 - **Decidió:** Líder — 07-nov ~00:30 (pendiente elección de modelo).
 
+## ADR-013 — Endpoints FastAPI asistenciales y doble codificación WCAG (D12)
+
+- **Contexto:** el Dashboard accesible requiere KPIs consolidados (% FOJA, horas agregadas, meta 90%), dotación paginada y cruce Plan vs. Real con latencias inferiores a 300ms y alertas conformes a WCAG 2.1 AA (Issue #20).
+- **Decisión:** implementar `backend/main.py` sobre FastAPI con agregaciones nativas en SQLite bajo WAL mode; soportar filtros multinivel (`it`, `periodo`, `cargo`, `area`, `cod_esp`) y entregar semáforo en `/api/plan-vs-real` con doble codificación obligatoria (etiquetas textuales explícitas + íconos vectoriales + badges: CRITICO, CUMPLIDO, SUPERAVIT) tanto agrupado como desagrupado.
+- **Consecuencias:** respuestas en <20ms locales; tolerancia a estado cero sin caídas (0 contratos = ceros estructurados); desacoplamiento de entorno vía `BOTATHON_DB_PATH`; 9/9 pruebas unitarias automatizadas con `TestClient`.
+- **Decidió:** Líder y Dev B asistidos por Antigravity — 07-nov ~03:25.
+
 ---
 
-*(Nuevas decisiones se agregan como ADR-013, ADR-014… con fecha y quién decidió.)*
+*(Nuevas decisiones se agregan como ADR-014, ADR-015… con fecha y quién decidió.)*
