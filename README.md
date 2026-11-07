@@ -412,6 +412,20 @@ gantt
 
 ---
 
+### Asignación vigente (labels: `dev-a` · `dev-b` · `lider`)
+
+| Rol | Foco | Issues | Derivable a IA ahora |
+|---|---|---|---|
+| **Dev A** (RPA/datos) | bot híbrido: worker.py, Studio, carpetas, rechazos, deltas/42h, ingesta SIC | `#11 #12 #13 #14 #15 #28` | #14 (script inválidos), #12 (guía — la redacta la IA, Dev A valida en Studio) |
+| **Dev B** (producto/cálculo) | motor + backend + React WCAG | `#16–#27` | #16 (seed — coordenadas ya mapeadas), #19 (DDL esquema), #23 (scaffold Vite) |
+| **Líder** | decisiones/ADR, QA accesibilidad, guion/lámina, datos demo, dispatch, merges | `#29 #30 #31 #32 #34` + `#33` transversal | #29 (archivo mayo, generado y verificado) |
+
+**Flujo de delegación:** issue listo → label `ready-to-implement` → lo ejecuta el humano asignado o un worker IA (registrando en `docs/AI_USAGE_LOG.md`) sobre `feat/issue-<n>` → revisión cruzada (el otro dev) → merge por líder.
+
+**Orden crítico de arranque:** Dev A: `#13 → #11 → #15 → #14 → #12 → #28` · Dev B: `#16 → #17 → #18 → #19 → #20 → #21 → #23/#24 → #25–#27` · Líder: `#29 → #30 → #31 → QA → #32`.
+
+---
+
 ## 11. Riesgos
 
 | # | Riesgo | Mitigación |
