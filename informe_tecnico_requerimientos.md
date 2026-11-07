@@ -2,7 +2,7 @@
 ## Sistema Automatizado de Planificación y Gestión Asistencial Teletón 2026
 **Proyecto:** Desafío Botathon 2026 — Automatización y Accesibilidad en Gestión Clínica  
 **Fecha de Emisión:** Noviembre 2026  
-**Documento Base:** Requerimientos Oficiales (A.pdf) y Fuentes de Datos Excel  
+**Documento Base:** Requerimientos Oficiales (requerimientos_oficiales.pdf, renombrado desde A.pdf) y Fuentes de Datos Excel  
 
 ---
 

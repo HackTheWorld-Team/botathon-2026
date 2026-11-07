@@ -48,7 +48,7 @@ flowchart LR
 | 3 | Parámetros estáticos; cambio de jornada no recalcula el futuro | Sin dinamismo; el pasado no queda congelado |
 | 4 | Herramientas inoperables para personas con discapacidad | Exclusión (punto social central del desafío) |
 
-**Escala verificada:** 3.123 filas de contrato · 462 profesionales únicos · 15 institutos · solo ene–jul 2026 en BUK (hay que proyectar ago–dic) · plan anual 692.706 atenciones · Meta de Gestión 623.435.
+**Escala verificada:** 3.123 filas de contrato · 462 profesionales únicos en los datos ene–jul (el enunciado oficial habla de **más de 600**, incluyendo vacantes) · 15 institutos · solo ene–jul 2026 en BUK (hay que proyectar ago–dic) · plan anual 692.706 atenciones · Meta de Gestión 623.435.
 
 **Solución en una línea:** bot Blue Prism (ingesta/validación/deltas) → motor de reglas (horas→atenciones) → dashboard web WCAG 2.1 AA (KPIs + parametrización).
 
@@ -60,11 +60,12 @@ flowchart LR
 |---|---|---|
 | `Nac - Base contratos x mes.xlsx` | Input primario (reporte BUK real) | Presente |
 | `Nac - Planificación Asistencial x mes.xlsx` | Modelo actual + diccionario de reglas | Presente |
-| `SIC_Atenciones_Reales.xlsx` (atenciones reales) | Input secundario (Plan vs. Real) | **AUSENTE — generar sintético** |
-| `A.pdf` (enunciado oficial) | Documento base | **AUSENTE del repo** |
+| `requerimientos_oficiales.pdf` | Enunciado oficial del desafío | Presente (renombrado desde `A.pdf`) |
+| `SIC_Atenciones_Reales.xlsx` | Input secundario (Plan vs. Real) | **Generado sintético** — [§3.4](#34-sic-sintético--generado) |
+| `tools/generar_sic.py` | Generador reproducible del SIC (semilla fija, perfiles) | Presente |
 | `Botathon 2026 - Teletón Práctica` (set con `Invalid_Records`) | Set de pruebas RPA | **AUSENTE del repo** |
 
-Esquema del SIC a generar: [§3.4](#34-sic-ausente--esquema-a-generar). Decisiones asociadas: [§12](#12-decisiones-pendientes).
+Detalle del SIC generado y cómo regenerarlo: [§3.4](#34-sic-sintético--generado). Decisiones asociadas: [§12](#12-decisiones-pendientes).
 
 ---
 
@@ -133,11 +134,34 @@ Encabezados reales en **fila 4** (índice 3); arriba hay título/meses combinado
 | Plan y metas | 162–189 | `PlanAteDir1–12` + total · `PlanAteDir+Ind1–12` + total · `MG_AteDir1–12` + total · `MG_AteDir+Ind1–12` + total |
 | Cierre anual | 190–205 | Plan/MG anual directo, indirecto, total, `Observaciones` |
 
-### 3.4 SIC (ausente) — esquema a generar
+### 3.4 SIC sintético — GENERADO
 
-Archivo a crear: `SIC_Atenciones_Reales.xlsx` con columnas: `Periodo` (YYYY-MM-01) · `IT` · `PersonaId` · `Cod_Esp` · `Atenciones_Directas_Reales` (int) · `Atenciones_Indirectas_Reales` (int).
+**Archivo:** `SIC_Atenciones_Reales.xlsx` (3.123 filas, ene–jul 2026, grano `PersonaId × IT × Periodo` — espejo exacto de BUK).
 
-**Requisito de demo:** generar con variación controlada por especialidad (déficit/superávit visibles en alertas).
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `Periodo` | fecha (YYYY-MM-01) | Mes de las atenciones |
+| `IT` | int | Sede (11–141) |
+| `PersonaId` | int | Profesional |
+| `Cod_Esp` | str | Especialidad |
+| `Atenciones_Directas_Reales` | int | Atenciones directas ejecutadas |
+| `Atenciones_Indirectas_Reales` | int | Atenciones indirectas ejecutadas |
+
+**Cómo se generó** (`tools/generar_sic.py`, semilla 42, perfil `balanceado`):
+
+- Real = plan simplificado (contratos BUK + reglas §4) × perfil por especialidad × jitter por fila × bias por persona.
+- **Déficit visible:** UTAC 0,71 · FI 0,77 · EN 0,82 del plan. **Superávit:** TO 1,06 · AS 1,03.
+- **Ratio global directo: 87,7%** — queda ~2 puntos bajo la meta 90% → alerta global visible en el dashboard.
+- 13 persona-mes en 0 atenciones (0,4%, simula licencias) para lucidez del Plan vs. Real.
+- Multi-sede cubierto: BUK trae 3 personas multi-IT (109828: PMo+San · 129024: Val+San · 140845: Cal+San) → SIC tiene filas por cada IT. Ojo: `125129` (Ant+Cal) existe solo en la hoja `Excepciones`, no en BUK — para la demo del Paso 3 se agrega manualmente al archivo de mayo.
+
+**Regenerar** (p.ej. cuando exista el motor real, para recalibrar contra su plan):
+
+```bash
+python3 tools/generar_sic.py [--seed 42] [--perfil balanceado|deficit|superavit] [--out SIC_Atenciones_Reales.xlsx]
+```
+
+Deja además `tools/plan_simplificado_referencia.csv` (plan Dir/Ind por persona×mes) para validar el motor: plan Dir total ene–jul = **458.733**.
 
 ---
 
@@ -174,6 +198,8 @@ NAS_total%            = NAS_base% + (Σ horas_asignaciones / jornada_total)
 ```
 
 **Validado** (`PersonaId 137732`, fisiatra 40 h, Líder Equipo 2 h): NAS 20% + 5% = 25% → asistencial 75% → Dir = 75×(65/80) = **60,94%** · Ind = 75×(15/80) = **14,06%**.
+
+**Catálogo de asignaciones especiales** (hoja `Distribucion_NAC` cols 17–19 + PDF oficial): `Líder Equipo 2 h` · `Tutor docente 1 h` · `Comité paritario 0,5 h` · `Reunión sindical 0,25 h` · `Investigación 2 h (aprobado CEC)` · `Coordinador docente 1 h` · `CEA 0,25 h` · `Mesas técnicas 0,5 h` · coordinaciones locales 1 h. Reglas: **máx. 2 asignaciones** para profesionales >30 h/semana; algunas requieren V°B° DMN (columna "Por Autorizar DMN y VP").
 
 ### Duda 2 — Tramos, cambios de jornada, pasado
 
@@ -232,6 +258,10 @@ Estos son los KPIs que el dashboard debe calcular; cada uno con su fórmula exac
 
 **Semanas hábiles 2026** (para `SemHab_m`): ene 4,2 · feb 4,0 · mar 4,4 · abr 4,2 · **may 3,8** · jun 4,2 · jul 4,4 · ago–dic 4,2 c/u.
 
+**Nota del enunciado:** la tabla entregada (`Planificacion Total`) **no muestra el % FOJA** — el dashboard debe agregarlo (es KPI obligatorio del PDF oficial).
+
+**Zonas geográficas que afectan el cálculo** (PDF oficial): **Arica y Ñuble** (feriados regionales) y **Aysén** (vacaciones) — impactan días hábiles y descuentos; deben ser parametrizables.
+
 ---
 
 ## 6. Requerimientos del MVP
@@ -279,6 +309,8 @@ Estos son los KPIs que el dashboard debe calcular; cada uno con su fórmula exac
 | 3 | 1:30 | Carga mayo 2026 | Nueva contrata + multi-sede (Ant/Cal) + 42 h detectados → deltas versionados → recálculo solo may–dic → vista "Antes/Después" |
 | 4 | 1:15 | Parametrización en vivo | Editar asignación (ej. Líder Equipo → 3 h) o % directo → KPIs se recalculan sin tocar código → capa SIC: déficit/superávit por especialidad |
 
+**Del PDF oficial:** este guion coincide con los 4 pasos oficiales (estado inicial → archivo BUK con errores + informe → cambios + delta → recálculo desde vigencia con antes/después por instituto **y** profesional). **Anotar desde el inicio dónde se usa IA** — su uso es declarable y puntúa.
+
 ---
 
 ## 8. Backlog priorizado
@@ -300,7 +332,7 @@ Estos son los KPIs que el dashboard debe calcular; cada uno con su fórmula exac
 | # | Ítem |
 |---|---|
 | S1 | Parametrización editable en UI |
-| S2 | SIC sintético + Plan vs. Real con alertas |
+| S2 | Plan vs. Real con alertas (SIC sintético **ya generado**, ver §3.4) |
 | S3 | Vista "Antes/Después" del recálculo |
 | S4 | ID de lote + log (trazabilidad) |
 
@@ -311,6 +343,9 @@ Estos son los KPIs que el dashboard debe calcular; cada uno con su fórmula exac
 | C1 | Simulación de vacantes on/off |
 | C2 | Multi-sede con split de horas (`Excepciones`) |
 | C3 | Auditoría de cambios de parámetros |
+| C4 | Simulación de impacto de un parámetro **antes** de aplicarlo (deseable del PDF oficial) |
+| C5 | Aprobación de asignaciones que requieren V°B° DMN (deseable del PDF) |
+| C6 | Distribución automática de reportes a jefaturas (deseable del PDF) |
 
 ### Won't (esta noche)
 
@@ -383,14 +418,14 @@ gantt
 
 ## 12. Decisiones pendientes
 
-| # | Decisión | Dueño | Plazo |
-|---|---|---|---|
-| D1 | Stack motor + dashboard | Equipo | 23:30 |
-| D2 | SQLite vs PostgreSQL | B | 23:30 |
-| D3 | ¿Agregar `A.pdf` y set de práctica al repo? | L | 00:30 |
-| D4 | Quién presenta / opera el bot | L | 05:00 |
-| D5 | Perfil de variación del SIC sintético | A | 04:00 |
-| D6 | ¿Vacantes (C1) en el guion o fuera? | L | 07:00 |
+| # | Decisión | Dueño | Plazo | Estado |
+|---|---|---|---|---|
+| D1 | Stack motor + dashboard | Equipo | 23:30 | Pendiente |
+| D2 | SQLite vs PostgreSQL | B | 23:30 | Pendiente |
+| D3 | Agregar `A.pdf` y set de práctica al repo | L | 00:30 | **Resuelta**: PDF agregado como `requerimientos_oficiales.pdf`; set de práctica sigue ausente |
+| D4 | Quién presenta / opera el bot | L | 05:00 | Pendiente |
+| D5 | Perfil de variación del SIC sintético | A | 04:00 | **Resuelta**: balanceado, semilla 42 — [§3.4](#34-sic-sintético--generado) |
+| D6 | ¿Vacantes (C1) en el guion o fuera? | L | 07:00 | Pendiente |
 
 ---
 
@@ -399,9 +434,13 @@ gantt
 ```
 botathon-2026/
 ├── README.md                            ← este documento (contexto maestro)
+├── requerimientos_oficiales.pdf         ← enunciado oficial (renombrado desde A.pdf)
 ├── informe_tecnico_requerimientos.md    ← fórmulas §3, arquitectura §4, guion §5 (fuente de verdad)
 ├── Nac - Base contratos x mes.xlsx      ← INPUT BUK (Dotacion_2026: 3.123×19, ene–jul, header fila 2)
 ├── Nac - Planificación Asistencial x mes.xlsx ← 8 hojas (476×205 + reglas)
+├── SIC_Atenciones_Reales.xlsx           ← SIC sintético (3.123 filas, perfil balanceado, seed 42)
+├── tools/generar_sic.py                 ← generador reproducible del SIC (§3.4)
+├── tools/plan_simplificado_referencia.csv ← plan Dir/Ind por persona×mes (validación del motor)
 ├── trusted-issue-comments.json          ← evidencia pipeline AI-SDLC (issue #2)
 ├── .ai-sdlc.yaml                        ← contrato pipeline (nivel shadow)
 ├── .github/workflows/ai-sdlc.yml        ← pipeline issue→implement→review→merge
