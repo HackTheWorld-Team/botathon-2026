@@ -134,6 +134,13 @@
 - **Consecuencias:** meses previos a la vigencia permanecen 100% congelados y verificables; cada cambio de regla deja rastro completo de auditoría; la UI puede previsualizar el impacto antes de aplicar cambios.
 - **Decidió:** Dev B (isabelrosemc) asistida por Antigravity — 07-nov 04:35.
 
+## ADR-017 — Auto-inicialización del entorno de demo y servido unificado en FastAPI (Issue #55)
+
+- **Contexto:** para la grabación del video de respaldo (08:30) y la demo en vivo (10:00), el sistema debe arrancar listo desde el segundo cero con datos reales sin requerir pasos manuales propensos a error (mitigando riesgo R2).
+- **Decisión:** crear `tools/preparar_entorno_demo.py` (con modos `completo` para los 4 lotes de demo y `paso-inicial` para antes de correr Blue Prism en vivo), integrar `_auto_seed_default_db_if_needed` en `backend/main.py` cuando `backend/db.sqlite` no existe o está vacía, y montar `frontend/dist` directamente en FastAPI vía `StaticFiles`.
+- **Consecuencias:** un solo comando (`uvicorn backend.main:app --port 8000`) sirve API + frontend compilado y auto-siembra la BD con los 4 lotes de demo si aún no existe; verificado E2E con 34/34 tests en verde.
+- **Decidió:** Líder y Dev B (isabelrosemc) asistidos por Antigravity — 07-nov 05:05.
+
 ---
 
-*(Nuevas decisiones se agregan como ADR-017, ADR-018… con fecha y quién decidió.)*
+*(Nuevas decisiones se agregan como ADR-018, ADR-019… con fecha y quién decidió.)*

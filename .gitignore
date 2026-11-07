@@ -13,10 +13,13 @@ frontend/dist/
 # Datos y artefactos generados
 *.db
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
 bot/entrada/*
 bot/procesados/*
 bot/rechazados/*
 bot/reportes/*
+!bot/**/.gitkeep
 !bot/entrada/.gitkeep
 !bot/procesados/.gitkeep
 !bot/rechazados/.gitkeep
