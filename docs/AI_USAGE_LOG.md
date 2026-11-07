@@ -14,6 +14,7 @@
 | 07-nov ~03:15 | opencode · z-ai/glm | Planificación de issues (épicas + subtareas) | 7 épicas (#4–#10, label `epic`, no dispatcheables) + 24 subtareas conceptuales vinculadas (#11–#34) vía gh cli, agrupadas: ingesta/bot, motor, backend, dashboard, SIC, demo, gobernanza | GitHub Issues #4–#34 | Líder |
 | 07-nov 01:38–01:52 | opencode · z-ai/glm | Priorización + etiquetado + dispatch (#4–#34) | Esquema `prio:p0–p3` (orden de ejecución) + `must/should/could` (MoSCoW §8) aplicado a los 31 issues; refinement DoR de #12 #13 #14 #16 #19 #23 #29 (títulos conventional-commit + `## Acceptance criteria` falsificables); cola IA armada → `scc:queued`/assignee líder (pipeline abrió PRs #35 #36) | GitHub Issues #4–#34 (labels+títulos+cuerpos), PRs #35–#36, README §10 | Líder |
 | 07-nov ~03:30 (en curso) | opencode · z-ai/glm | Cola IA #12 #14 #16 #19 #23 | Generación: guía Studio Dev A (#12), generador de archivo corrupto (#14), seed SQLite (#16), esquema DDL (#19), scaffold Vite WCAG (#23) — branches `feat/issue-<n>` + PR revisables por cosmolinda/isabelrosemc | ver PRs de cada issue | Líder + dev del área (review) |
+| 07-nov ~02:10 | opencode · z-ai/glm | QA PR #43 (issue #29) + limpieza cola IA | Fix 1 línea: alta demo 141845 nacía con 44h (viola tope legal mayo) → 42h, re-validado (0×44h). Cerrados 5 PRs duplicados del pipeline (#35/#37/#39/#42/#44). Protocolo ajustado por líder: sin reviewers humanos en PRs IA; devs solo revisan bajo demanda | PR #43 (commit fix), issues #12–#23 anotados, AGENTS §5.6, README §10 | Líder (regla + merge) |
 
 ---
 

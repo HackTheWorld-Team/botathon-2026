@@ -58,7 +58,7 @@ Regla práctica: **prompt terminado = docs al día**. Un PR/commit sin su fila e
 3. Los agentes locales siguen §4 (docs) y abren PR; merge por ai-sdlc o humano.
 4. Épicas NO se dispatchean (label `epic` es skip-label del pipeline).
 5. Labels de bloqueo: `needs-human`, `hold`, `wip` — respetar siempre.
-6. **Cola IA (label `ai-worker`)**: los issues derivados a IA se asignan **físicamente al líder (Axel-DaMage)** — único dueño de la cola IA; los PRs generados por IA se revisan por el **dev del área** (cosmolinda en RPA/datos, isabelrosemc en producto) y los mergea el líder. **Dev A y Dev B nunca son assigned de issues IA** — así no hay choques de desarrollo.
+6. **Cola IA (label `ai-worker`)**: los issues derivados a IA se asignan **físicamente al líder (Axel-DaMage)** — único dueño de la cola IA; el worker IA ejecuta y abre PR **sin asignar reviewers humanos**: los devs **solo** revisan si el líder se lo pide explícitamente o si su código depende directamente del artefacto. **Dev A y Dev B nunca son assigned de issues o PRs IA** — nadie se asigna a trabajo que no va a tocar. Merge: líder.
 
 ## 6. Convenciones técnicas
 

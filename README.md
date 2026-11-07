@@ -419,7 +419,7 @@ gantt
 | **Dev A** — cosmolinda (RPA/datos) | bot híbrido: worker.py, Studio, carpetas, rechazos, deltas/42h, ingesta SIC | `#11 #13 #15 #28` | — |
 | **Dev B** — isabelrosemc (producto/cálculo) | motor + backend + React WCAG | `#17 #18 #20 #21 #22 #24 #25 #26 #27` | — |
 | **Líder** — Axel-DaMage | decisiones/ADR, QA accesibilidad, guion/lámina, datos demo, dispatch, merges, **dueño de la cola IA** | `#29 #30 #31 #32 #33 #34` | — |
-| **Cola IA** (`ai-worker`) | trabajos derivados a worker IA (opencode/GLM), revisados por el dev del área | `#12 #14` (revisa Dev A) · `#16 #19 #23` (revisa Dev B) | en ejecución |
+| **Cola IA** (`ai-worker`) | trabajos derivados a worker IA — **sin reviewers humanos asignados**; revisión solo bajo demanda del líder | `#12 #14 #16 #19 #23 #29` | merge por líder |
 
 **Flujo de delegación:** issue listo → label `ready-to-implement` → lo ejecuta el humano asignado o un worker IA (registrando en `docs/AI_USAGE_LOG.md`) sobre `feat/issue-<n>` → revisión cruzada (el otro dev) → merge por líder.
 
