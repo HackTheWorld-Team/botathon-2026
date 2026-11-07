@@ -28,7 +28,7 @@ import PlanVsRealView from './views/PlanVsRealView.jsx'
 import LotesView from './views/LotesView.jsx'
 
 /**
- * App.jsx — Shell One-Page Accesible WCAG 2.1 AA, Compacto y Centrado para Notebook
+ * App.jsx — Layout One-Page de Dos Columnas (Sidebar Izquierdo: Filtros/Categorías + Centro/Derecha: Datos Estilo Excel Redondeado)
  */
 export default function App() {
   const initialRouteRef = useRef(null)
@@ -249,66 +249,67 @@ export default function App() {
         </div>
       </header>
 
-      {/* Statusbar del Bot Blue Prism */}
-      <BotStatusBar
-        latestLote={latestLote}
-        onSelectTab={(t) => handleSelectTab(t, true)}
-      />
+      {/* Cuerpo Principal en Dos Columnas: Izquierda (Categorías, Global Filter Headers, Filtros y RPA) · Centro/Derecha (Lista y Datos Foco Principal) */}
+      <div className="app-workspace">
+        <aside className="app-sidebar" aria-label="Categorías, filtros globales y estado RPA">
+          <GlobalFilters
+            filters={filters}
+            catalogs={catalogs}
+            onChangeFilter={handleChangeFilter}
+            onResetFilters={handleResetFilters}
+          />
+          <BotStatusBar
+            latestLote={latestLote}
+            onSelectTab={(t) => handleSelectTab(t, true)}
+          />
+        </aside>
 
-      {/* Filtros Globales Multinivel */}
-      <GlobalFilters
-        filters={filters}
-        catalogs={catalogs}
-        onChangeFilter={handleChangeFilter}
-        onResetFilters={handleResetFilters}
-      />
+        <main id="contenido-principal" role="main" className="app-main">
+          <div
+            key={activeTab}
+            id={`panel-${activeTab}`}
+            role="tabpanel"
+            aria-labelledby={`tab-${activeTab}`}
+            className="tabpanel-box view-animate-in"
+          >
+            {activeTab === 'resumen' && (
+              <ResumenView
+                kpis={kpis}
+                planVsReal={planVsReal}
+                filters={filters}
+                onChangeFilter={handleChangeFilter}
+                onSelectTab={(t) => handleSelectTab(t, true)}
+              />
+            )}
 
-      {/* Panel Activo (role="tabpanel") con Transición Suave y Scroll Interno */}
-      <main id="contenido-principal" role="main" className="app-main">
-        <div
-          key={activeTab}
-          id={`panel-${activeTab}`}
-          role="tabpanel"
-          aria-labelledby={`tab-${activeTab}`}
-          className="tabpanel-box view-animate-in"
-        >
-          {activeTab === 'resumen' && (
-            <ResumenView
-              kpis={kpis}
-              planVsReal={planVsReal}
-              filters={filters}
-              onChangeFilter={handleChangeFilter}
-              onSelectTab={(t) => handleSelectTab(t, true)}
-            />
-          )}
+            {activeTab === 'antes-despues' && (
+              <AntesDespuesView
+                filters={filters}
+                onChangeFilter={handleChangeFilter}
+              />
+            )}
 
-          {activeTab === 'antes-despues' && (
-            <AntesDespuesView
-              filters={filters}
-              onChangeFilter={handleChangeFilter}
-            />
-          )}
+            {activeTab === 'parametros' && (
+              <ParametrosView
+                onAnnounce={(msg) => {
+                  setLiveMessage(msg)
+                  setAlertMessage('')
+                }}
+              />
+            )}
 
-          {activeTab === 'parametros' && (
-            <ParametrosView
-              onAnnounce={(msg) => {
-                setLiveMessage(msg)
-                setAlertMessage('')
-              }}
-            />
-          )}
+            {activeTab === 'plan-vs-real' && (
+              <PlanVsRealView
+                planVsReal={planVsReal}
+                filters={filters}
+                onChangeFilter={handleChangeFilter}
+              />
+            )}
 
-          {activeTab === 'plan-vs-real' && (
-            <PlanVsRealView
-              planVsReal={planVsReal}
-              filters={filters}
-              onChangeFilter={handleChangeFilter}
-            />
-          )}
-
-          {activeTab === 'lotes' && <LotesView lotes={lotes} />}
-        </div>
-      </main>
+            {activeTab === 'lotes' && <LotesView lotes={lotes} />}
+          </div>
+        </main>
+      </div>
 
       <footer className="app-footer" role="contentinfo">
         <span>Teletón · Botathon 2026</span>

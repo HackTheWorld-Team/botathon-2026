@@ -3,7 +3,7 @@ import { PixelFilterIcon, PixelResetIcon } from './PixelIcons.jsx'
 import { PERIODO_LABELS } from '../api.js'
 
 /**
- * GlobalFilters.jsx — Barra de filtros multinivel compacta y centrada
+ * GlobalFilters.jsx — Panel lateral izquierdo de categorías, alcance activo (global-filters__header) y filtros multinivel
  */
 export default function GlobalFilters({
   filters,
@@ -44,6 +44,10 @@ export default function GlobalFilters({
       <div className="global-filters__header">
         <div className="global-filters__scope">
           <PixelFilterIcon size={14} />
+          <span className="global-filters__scope-title">Filtros y Categorías</span>
+        </div>
+
+        <div className="global-filters__active-summary">
           <strong className="global-filters__scope-value">{scopeLabel}</strong>
           {filters.mes && (
             <span className="scope-pill">
@@ -83,8 +87,8 @@ export default function GlobalFilters({
             disabled={!hasActiveFilters}
             aria-label="Restablecer todos los filtros a vista Nacional (Atajo: tecla Escape)"
           >
-            <PixelResetIcon size={13} />
-            <span>Nacional (Esc)</span>
+            <PixelResetIcon size={12} />
+            <span>Limpiar (Esc)</span>
           </button>
         </div>
       </div>

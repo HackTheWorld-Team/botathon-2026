@@ -5,10 +5,12 @@ import {
   PixelAlertIcon,
   PixelTrendUpIcon,
   PixelStatusBadge,
+  PixelExcelIcon,
 } from '../components/PixelIcons.jsx'
 
 /**
- * ResumenView.jsx — Vista compacta y centrada de Indicadores Clave Asistenciales
+ * ResumenView.jsx — Vista General centrada en la Lista de Datos Estilo Excel Clásico Redondeado
+ * e Indicadores Clave Compactos
  */
 export default function ResumenView({
   kpis,
@@ -43,215 +45,58 @@ export default function ResumenView({
 
   return (
     <div className="view-container">
-      <div className="view-header">
-        <div>
-          <h2 id="panel-heading-resumen" tabIndex="-1" className="view-title">
-            Resumen Ejecutivo Asistencial
-          </h2>
-          <p className="view-subtitle">
-            Motor determinista (<code>⌊·⌋</code>) · Trazabilidad RPA Blue Prism
-          </p>
-        </div>
+      <h2 id="panel-heading-resumen" tabIndex="-1" className="sr-only">
+        Resumen Ejecutivo Asistencial
+      </h2>
 
-        <div className="view-header__badges">
-          <span className="status-badge status-badge--cumplido">
-            <PixelCheckIcon size={13} />
-            <span>
-              <strong className="tabular-nums">{totalProf.toLocaleString('es-CL')}</strong> prof. ({totalContratos.toLocaleString('es-CL')} ctos.)
-            </span>
-          </span>
-          {criticosCount > 0 && (
-            <span className="status-badge status-badge--critico">
-              <PixelAlertIcon size={13} />
-              <span>
-                {criticosCount} {criticosCount === 1 ? 'bajo' : 'bajo'} MG 90%
-              </span>
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* 4 Tarjetas KPI Principales Homogéneas y Centradas */}
-      <section aria-label="Indicadores clave de planificación asistencial" className="kpi-grid">
-        {/* Card 1: % FOJA */}
-        <article className="kpi-card" aria-labelledby="kpi-title-foja">
-          <div className="kpi-card__top">
-            <span className="micro-label">KPI 01 · OCUPACIÓN</span>
-            <span className="status-badge status-badge--teal">
-              <PixelCheckIcon size={12} />
-              <span>≥65%</span>
-            </span>
-          </div>
-
-          <h3 id="kpi-title-foja" className="kpi-card__title">
-            % FOJA (Ocupación Directa)
-          </h3>
-
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums">
-              {fojaPct.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
-            </p>
-            <span className="kpi-card__formula tabular-nums">
-              {hDir.toLocaleString('es-CL')}h / {hCont.toLocaleString('es-CL')}h
-            </span>
-          </div>
-
-          <SegmentedBar
-            valuePct={fojaPct}
-            targetPct={70}
-            variant="teal"
-            caption={`Meta referencial directa ≥65%`}
-          />
-
-          <p className="kpi-card__note">
-            <strong>Hallazgo solucionado:</strong> ausente en Excel histórico, integrado en motor.
-          </p>
-        </article>
-
-        {/* Card 2: Meta de Gestión 90% */}
-        <article className="kpi-card" aria-labelledby="kpi-title-mg">
-          <div className="kpi-card__top">
-            <span className="micro-label">KPI 02 · META 90%</span>
-            <span className="status-badge status-badge--cumplido">
-              <PixelTrendUpIcon size={12} />
-              <span>Real: {globalCumplimientoPct.toLocaleString('es-CL')}%</span>
-            </span>
-          </div>
-
-          <h3 id="kpi-title-mg" className="kpi-card__title">
-            Meta de Gestión (MG 90%)
-          </h3>
-
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums">
-              {metaGestion.toLocaleString('es-CL')}
-            </p>
-            <span className="kpi-card__unit">atenciones exigibles</span>
-          </div>
-
-          <SegmentedBar
-            valuePct={globalCumplimientoPct}
-            targetPct={90}
-            variant={globalCumplimientoPct < 90 ? 'alert' : 'default'}
-            caption={`Ejecución SIC vs umbral 90%`}
-          />
-
-          <p className="kpi-card__note">
-            <code>MG = ⌊Plan_Dir × 0,90⌋</code> sobre{' '}
-            <strong className="tabular-nums">{planDirecto.toLocaleString('es-CL')}</strong> plan.
-          </p>
-        </article>
-
-        {/* Card 3: Plan Asistencial Mensual */}
-        <article className="kpi-card" aria-labelledby="kpi-title-plan">
-          <div className="kpi-card__top">
-            <span className="micro-label">KPI 03 · CAPACIDAD</span>
-            <span className="status-badge status-badge--cumplido">
-              <PixelCheckIcon size={12} />
-              <span>Trazable</span>
-            </span>
-          </div>
-
-          <h3 id="kpi-title-plan" className="kpi-card__title">
-            Plan Asistencial Proyectado
-          </h3>
-
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums">
-              {planTotal.toLocaleString('es-CL')}
-            </p>
-            <span className="kpi-card__unit">atenciones (Dir + Ind)</span>
-          </div>
-
-          <dl className="kpi-breakdown kpi-breakdown--3col tabular-nums">
-            <div className="kpi-breakdown__item">
-              <dt>Directas</dt>
-              <dd>{planDirecto.toLocaleString('es-CL')}</dd>
-            </div>
-            <div className="kpi-breakdown__item">
-              <dt>Indirectas</dt>
-              <dd>{planIndirecto.toLocaleString('es-CL')}</dd>
-            </div>
-            <div className="kpi-breakdown__item">
-              <dt>Dotación</dt>
-              <dd>{totalProf.toLocaleString('es-CL')} p.</dd>
-            </div>
-          </dl>
-
-          <p className="kpi-card__note">
-            <strong>Vigencia:</strong> Ley 42h desde mayo sin alterar meses cerrados.
-          </p>
-        </article>
-
-        {/* Card 4: Horas Semanales Dir / Ind / NAS */}
-        <article className="kpi-card" aria-labelledby="kpi-title-horas">
-          <div className="kpi-card__top">
-            <span className="micro-label">KPI 04 · JORNADA</span>
-            <span className="status-badge status-badge--teal">
-              <PixelCheckIcon size={12} />
-              <span>100%</span>
-            </span>
-          </div>
-
-          <h3 id="kpi-title-horas" className="kpi-card__title">
-            Horas Semanales Contratadas
-          </h3>
-
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums">
-              {hCont.toLocaleString('es-CL', { maximumFractionDigits: 1 })} h
-            </p>
-            <span className="kpi-card__unit">semanales en red</span>
-          </div>
-
-          <StackedHoursBar pctDir={pctDir} pctInd={pctInd} pctNas={pctNas} />
-
-          <dl className="kpi-breakdown kpi-breakdown--3col tabular-nums">
-            <div className="kpi-breakdown__item">
-              <dt>Dir</dt>
-              <dd>{hDir.toLocaleString('es-CL', { maximumFractionDigits: 1 })}h</dd>
-            </div>
-            <div className="kpi-breakdown__item">
-              <dt>Ind</dt>
-              <dd>{hInd.toLocaleString('es-CL', { maximumFractionDigits: 1 })}h</dd>
-            </div>
-            <div className="kpi-breakdown__item">
-              <dt>NAS</dt>
-              <dd>{hNas.toLocaleString('es-CL', { maximumFractionDigits: 1 })}h</dd>
-            </div>
-          </dl>
-        </article>
-      </section>
-
-      {/* Tabla Resumen por Especialidad con scroll interno */}
+      {/* 1. Foco Principal: Planilla / Lista Central Estilo Excel Clásico Redondeado */}
       <section
         aria-labelledby="resumen-esp-heading"
-        className="panel-section"
+        className="panel-section panel-section--excel-focus"
       >
-        <div className="panel-section__header">
-          <div>
+        <div className="excel-toolbar">
+          <div className="excel-toolbar__title-group">
+            <PixelExcelIcon size={16} />
             <h3 id="resumen-esp-heading" className="panel-section__title">
-              Cumplimiento por Especialidad (Plan Directo vs. Real SIC)
+              Planilla de Cumplimiento por Especialidad (Plan Directo vs. Real SIC)
             </h3>
           </div>
-          {onSelectTab && (
-            <button
-              type="button"
-              className="btn-pixel btn-pixel--primary btn-pixel--sm"
-              onClick={() => onSelectTab('plan-vs-real')}
-            >
-              Matriz completa →
-            </button>
-          )}
+
+          <div className="excel-toolbar__meta">
+            <span className="status-badge status-badge--cumplido">
+              <PixelCheckIcon size={12} />
+              <span>
+                <strong className="tabular-nums">{totalProf.toLocaleString('es-CL')}</strong> prof. ({totalContratos.toLocaleString('es-CL')} ctos.)
+              </span>
+            </span>
+            {criticosCount > 0 && (
+              <span className="status-badge status-badge--critico">
+                <PixelAlertIcon size={12} />
+                <span>
+                  {criticosCount} bajo MG 90%
+                </span>
+              </span>
+            )}
+            {onSelectTab && (
+              <button
+                type="button"
+                className="btn-pixel btn-pixel--primary btn-pixel--sm"
+                onClick={() => onSelectTab('plan-vs-real')}
+              >
+                Matriz completa →
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="table-responsive" role="region" aria-labelledby="resumen-esp-heading" tabIndex="0">
-          <table className="pixel-table">
+        <div className="table-responsive table-responsive--main-focus" role="region" aria-labelledby="resumen-esp-heading" tabIndex="0">
+          <table className="pixel-table excel-sheet-table">
             <caption className="sr-only">
               Tabla de cumplimiento asistencial por especialidad clínica comparando Plan Directo, Meta de Gestión 90% y Atenciones Reales SIC
             </caption>
             <thead>
               <tr>
+                <th scope="col" className="excel-rownum-col">#</th>
                 <th scope="col">Especialidad</th>
                 <th scope="col" className="num-col">Plan Directo</th>
                 <th scope="col" className="num-col">Meta (90%)</th>
@@ -269,6 +114,9 @@ export default function ResumenView({
                     key={`${row.cod_esp}-${row.it || idx}`}
                     className={row.alerta?.nivel === 'CRITICO' ? 'row-critico' : ''}
                   >
+                    <td className="excel-rownum-col tabular-nums" aria-hidden="true">
+                      {idx + 1}
+                    </td>
                     <th scope="row" className="esp-cell">
                       <span className="esp-name">{row.cod_esp}</span>
                       {row.sigla && row.sigla !== 'NAC' && (
@@ -313,6 +161,132 @@ export default function ResumenView({
             </tbody>
           </table>
         </div>
+      </section>
+
+      {/* 2. Cinta Compacta de 4 Indicadores Clave debajo de la Lista */}
+      <section aria-label="Indicadores clave de planificación asistencial" className="kpi-grid">
+        {/* Card 1: % FOJA */}
+        <article className="kpi-card" aria-labelledby="kpi-title-foja">
+          <div className="kpi-card__top">
+            <span className="micro-label">KPI 01 · % FOJA</span>
+            <span className="status-badge status-badge--teal">
+              <PixelCheckIcon size={11} />
+              <span>≥65%</span>
+            </span>
+          </div>
+
+          <h3 id="kpi-title-foja" className="kpi-card__title">
+            Ocupación Directa
+          </h3>
+
+          <div className="kpi-card__value-row">
+            <p className="kpi-card__value tabular-nums">
+              {fojaPct.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+            </p>
+            <span className="kpi-card__formula tabular-nums">
+              {hDir.toLocaleString('es-CL')}h / {hCont.toLocaleString('es-CL')}h
+            </span>
+          </div>
+
+          <SegmentedBar
+            valuePct={fojaPct}
+            targetPct={70}
+            variant="teal"
+          />
+        </article>
+
+        {/* Card 2: Meta de Gestión 90% */}
+        <article className="kpi-card" aria-labelledby="kpi-title-mg">
+          <div className="kpi-card__top">
+            <span className="micro-label">KPI 02 · MG 90%</span>
+            <span className="status-badge status-badge--cumplido">
+              <PixelTrendUpIcon size={11} />
+              <span>Real: {globalCumplimientoPct.toLocaleString('es-CL')}%</span>
+            </span>
+          </div>
+
+          <h3 id="kpi-title-mg" className="kpi-card__title">
+            Meta de Gestión
+          </h3>
+
+          <div className="kpi-card__value-row">
+            <p className="kpi-card__value tabular-nums">
+              {metaGestion.toLocaleString('es-CL')}
+            </p>
+            <span className="kpi-card__unit">
+              <code>⌊{planDirecto.toLocaleString('es-CL')} × 0,90⌋</code>
+            </span>
+          </div>
+
+          <SegmentedBar
+            valuePct={globalCumplimientoPct}
+            targetPct={90}
+            variant={globalCumplimientoPct < 90 ? 'alert' : 'default'}
+          />
+        </article>
+
+        {/* Card 3: Plan Asistencial Mensual */}
+        <article className="kpi-card" aria-labelledby="kpi-title-plan">
+          <div className="kpi-card__top">
+            <span className="micro-label">KPI 03 · PLAN TOTAL</span>
+            <span className="status-badge status-badge--cumplido">
+              <PixelCheckIcon size={11} />
+              <span>Trazable</span>
+            </span>
+          </div>
+
+          <h3 id="kpi-title-plan" className="kpi-card__title">
+            Capacidad Proyectada
+          </h3>
+
+          <div className="kpi-card__value-row">
+            <p className="kpi-card__value tabular-nums">
+              {planTotal.toLocaleString('es-CL')}
+            </p>
+            <span className="kpi-card__unit">atenciones (Dir + Ind)</span>
+          </div>
+
+          <dl className="kpi-breakdown kpi-breakdown--3col tabular-nums">
+            <div className="kpi-breakdown__item">
+              <dt>Dir</dt>
+              <dd>{planDirecto.toLocaleString('es-CL')}</dd>
+            </div>
+            <div className="kpi-breakdown__item">
+              <dt>Ind</dt>
+              <dd>{planIndirecto.toLocaleString('es-CL')}</dd>
+            </div>
+            <div className="kpi-breakdown__item">
+              <dt>Prof.</dt>
+              <dd>{totalProf.toLocaleString('es-CL')}</dd>
+            </div>
+          </dl>
+        </article>
+
+        {/* Card 4: Horas Semanales Dir / Ind / NAS */}
+        <article className="kpi-card" aria-labelledby="kpi-title-horas">
+          <div className="kpi-card__top">
+            <span className="micro-label">KPI 04 · JORNADA</span>
+            <span className="status-badge status-badge--teal">
+              <PixelCheckIcon size={11} />
+              <span>100%</span>
+            </span>
+          </div>
+
+          <h3 id="kpi-title-horas" className="kpi-card__title">
+            Horas Semanales
+          </h3>
+
+          <div className="kpi-card__value-row">
+            <p className="kpi-card__value tabular-nums">
+              {hCont.toLocaleString('es-CL', { maximumFractionDigits: 1 })} h
+            </p>
+            <span className="kpi-card__unit">
+              Dir {hDir.toLocaleString('es-CL', { maximumFractionDigits: 0 })}h · Ind {hInd.toLocaleString('es-CL', { maximumFractionDigits: 0 })}h · NAS {hNas.toLocaleString('es-CL', { maximumFractionDigits: 0 })}h
+            </span>
+          </div>
+
+          <StackedHoursBar pctDir={pctDir} pctInd={pctInd} pctNas={pctNas} />
+        </article>
       </section>
     </div>
   )
