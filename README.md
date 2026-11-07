@@ -416,9 +416,10 @@ gantt
 
 | Rol | Foco | Issues | Derivable a IA ahora |
 |---|---|---|---|
-| **Dev A** (RPA/datos) | bot híbrido: worker.py, Studio, carpetas, rechazos, deltas/42h, ingesta SIC | `#11 #12 #13 #14 #15 #28` | #14 (script inválidos), #12 (guía — la redacta la IA, Dev A valida en Studio) |
-| **Dev B** (producto/cálculo) | motor + backend + React WCAG | `#16–#27` | #16 (seed — coordenadas ya mapeadas), #19 (DDL esquema), #23 (scaffold Vite) |
-| **Líder** | decisiones/ADR, QA accesibilidad, guion/lámina, datos demo, dispatch, merges | `#29 #30 #31 #32 #34` + `#33` transversal | #29 (archivo mayo, generado y verificado) |
+| **Dev A** — cosmolinda (RPA/datos) | bot híbrido: worker.py, Studio, carpetas, rechazos, deltas/42h, ingesta SIC | `#11 #13 #15 #28` | — |
+| **Dev B** — isabelrosemc (producto/cálculo) | motor + backend + React WCAG | `#17 #18 #20 #21 #22 #24 #25 #26 #27` | — |
+| **Líder** — Axel-DaMage | decisiones/ADR, QA accesibilidad, guion/lámina, datos demo, dispatch, merges, **dueño de la cola IA** | `#29 #30 #31 #32 #33 #34` | — |
+| **Cola IA** (`ai-worker`) | trabajos derivados a worker IA (opencode/GLM), revisados por el dev del área | `#12 #14` (revisa Dev A) · `#16 #19 #23` (revisa Dev B) | en ejecución |
 
 **Flujo de delegación:** issue listo → label `ready-to-implement` → lo ejecuta el humano asignado o un worker IA (registrando en `docs/AI_USAGE_LOG.md`) sobre `feat/issue-<n>` → revisión cruzada (el otro dev) → merge por líder.
 
