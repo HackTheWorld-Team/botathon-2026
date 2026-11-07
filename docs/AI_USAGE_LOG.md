@@ -12,6 +12,7 @@
 | 07-nov 02:30–03:00 | opencode · z-ai/glm | Decisiones D1–D10 | Brief de decisiones con recomendaciones; aplicación de decisiones del líder al README (stack, 100% local, Blue Prism híbrido) | `README.md` §12, §9, §10, §11 | Líder (decidió) |
 | 07-nov ~03:00 | opencode · z-ai/glm | Gobernanza de agentes | AGENTS.md (modo de trabajo + protocolo de documentación autónoma), ARCHITECTURE.md (ADR-001…005), AI_USAGE_LOG.md (este archivo), .gitignore | `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/AI_USAGE_LOG.md`, `.gitignore` | Líder |
 | 07-nov ~03:15 | opencode · z-ai/glm | Planificación de issues (épicas + subtareas) | 7 épicas (#4–#10, label `epic`, no dispatcheables) + 24 subtareas conceptuales vinculadas (#11–#34) vía gh cli, agrupadas: ingesta/bot, motor, backend, dashboard, SIC, demo, gobernanza | GitHub Issues #4–#34 | Líder |
+| 07-nov ~04:50 | opencode · z-ai/glm | Issue #14: Generador BUK corrupto demo Paso 2 | Script `tools/make_demo_invalidos.py` determinista (seed 42) que inyecta 4 defectos trazables en copia del BUK: jornada -44, texto 'Tres Cientos', IT 999 inexistente, duplicado PK [PersonaId+IT+Periodo]; genera `bot/entrada/BUK_Demo_Paso2_Corrupto.xlsx` sin tocar fuente | `tools/make_demo_invalidos.py`, `bot/entrada/BUK_Demo_Paso2_Corrupto.xlsx` | Líder |
 
 ---
 

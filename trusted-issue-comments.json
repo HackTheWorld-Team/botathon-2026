@@ -1,18 +1,18 @@
 [
   {
-    "body": "<!-- ai-sdlc:refinement fp:\"7171777edc4a9cdc\" status:\"ready\" armed:\"true\" -->\n✅ **AI-SDLC intake — spec satisfies the Definition of Ready.** Derived acceptance criteria:\n\n- [ ] `README.md` line 1-3 contains a Markdown image badge for the `ai-sdlc` workflow, linked to `https://github.com/HackTheWorld-Team/botathon-2026/actions/workflows/ai-sdlc.yml`\n- [ ] Badge URL follows the pattern `https://github.com/HackTheWorld-Team/botathon-2026/actions/workflows/ai-sdlc.yml/badge.svg`\n- [ ] No other lines of `README.md` are modified\n\nThe `ready-to-implement` arm was restored — this issue re-entered the dispatch queue.",
-    "created_at": "2026-11-07T01:36:22Z"
+    "body": "<!-- ai-sdlc:refinement fp:\"ba8b85495974b974\" status:\"ready\" armed:\"false\" -->\n✅ **AI-SDLC intake — spec satisfies the Definition of Ready.** Derived acceptance criteria:\n\n- [ ] `python tools/make_demo_invalidos.py` genera el archivo corrupto SIN modificar el Excel fuente.\n- [ ] El archivo contiene exactamente los 4 defectos listados, en filas distintas y rastreables.\n- [ ] Ejecutado 2 veces produce resultado idéntico (determinista, seed fija).\n- [ ] Cruce con #11: el worker rechaza las 4 filas defectuosas y publica el resto sin caerse.\n- [ ] El duplicado PK es sobre [PersonaId+IT+Periodo], igual que la validación del worker.\n\nApply `ready-to-implement` to queue this issue for implementation.",
+    "created_at": "2026-11-07T04:39:57Z"
   },
   {
-    "body": "⚖️ **AI-SDLC label-contradiction repair** — 2026-11-07T01:37:50.158Z\n\nA forbidden label combination was repaired (spec/labels.md → Forbidden combinations):\n\n- removed: `ready-to-implement`\n- vetoed by: `scc:not-ready`\n\nBlocker labels always outrank the dispatch trigger. Resolve or remove\n`scc:not-ready` first, then re-apply the trigger.\n\n<!-- ai-sdlc:label-veto -->\n",
-    "created_at": "2026-11-07T01:37:50Z"
+    "body": "✅ **AI-SDLC intake:** DoR passed — queued for implementation (approved surface `ba8b85495974`). Follow the opened PR for progress.\n<!-- ai-sdlc:dor sha256=ba8b85495974b974c0e3844281617acd7deb746a41361d2afe9740b9123acc39 -->",
+    "created_at": "2026-11-07T04:47:24Z"
   },
   {
-    "body": "✅ **AI-SDLC intake:** DoR passed — queued for implementation (approved surface `7171777edc4a`). Follow the opened PR for progress.\n<!-- ai-sdlc:dor sha256=7171777edc4a9cdc8dd5f84e01dc09f2d1651dbdbdd065f56eb6627ce02c42ea -->",
-    "created_at": "2026-11-07T01:38:02Z"
+    "body": "🤖 **Dispatch a worker IA** (opencode/GLM, dirección: @Axel-DaMage). Revisor humano: @cosmolinda. Archivos: `tools/make_demo_invalidos.py` (nuevo) — sin choque.",
+    "created_at": "2026-11-07T04:47:33Z"
   },
   {
-    "body": "⚖️ **AI-SDLC label-contradiction repair** — 2026-11-07T01:38:15.167Z\n\nA forbidden label combination was repaired (spec/labels.md → Forbidden combinations):\n\n- removed: `ready-to-implement`\n- vetoed by: `scc:queued`\n\nBlocker labels always outrank the dispatch trigger. Resolve or remove\n`scc:queued` first, then re-apply the trigger.\n\n<!-- ai-sdlc:label-veto -->\n",
-    "created_at": "2026-11-07T01:38:15Z"
+    "body": "⚖️ **AI-SDLC label-contradiction repair** — 2026-11-07T04:47:38.051Z\n\nA forbidden label combination was repaired (spec/labels.md → Forbidden combinations):\n\n- removed: `ready-to-implement`\n- vetoed by: `scc:queued`\n\nBlocker labels always outrank the dispatch trigger. Resolve or remove\n`scc:queued` first, then re-apply the trigger.\n\n<!-- ai-sdlc:label-veto -->\n",
+    "created_at": "2026-11-07T04:47:38Z"
   }
 ]
