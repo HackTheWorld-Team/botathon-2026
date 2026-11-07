@@ -8,7 +8,7 @@ import {
 import { downloadRejectedReport } from '../api.js'
 
 /**
- * BotStatusBar.jsx — Barra de estado minimalista y centrada del Bot RPA Blue Prism
+ * BotStatusBar.jsx — Material 3 (M3) Compact Assist Chip Bar
  */
 export default function BotStatusBar({ latestLote, onSelectTab }) {
   const lote = latestLote || {
@@ -24,52 +24,51 @@ export default function BotStatusBar({ latestLote, onSelectTab }) {
   const hasRejected = Number(lote.rechazados) > 0
 
   return (
-    <section
-      className="bot-statusbar"
+    <div
+      className="m3-bot-assist-group"
+      role="group"
       aria-label="Estado operativo del Bot RPA Blue Prism"
     >
-      <div className="bot-statusbar__inner">
-        <span className="bot-badge">
-          <span className="bot-pulse-dot" aria-hidden="true" />
-          <PixelBotIcon size={14} />
-          <strong>RPA #{lote.lote_id}</strong>
-          <span className="bot-statusbar__muted">({lote.duracion_ms} ms)</span>
+      <div className="m3-chip m3-chip--elevated" title={`Lote #${lote.lote_id} (${lote.tipo}) procesado en ${lote.duracion_ms} ms`}>
+        <span className="m3-pulse-dot" aria-hidden="true" />
+        <PixelBotIcon size={14} />
+        <span className="font-bold">RPA #{lote.lote_id}</span>
+        <span className="m3-chip__muted">({lote.duracion_ms}ms)</span>
+      </div>
+
+      <span className="m3-chip m3-chip--success" title="Registros válidos procesados">
+        <PixelCheckIcon size={12} />
+        <strong className="tabular-nums">{Number(lote.validos).toLocaleString('es-CL')}</strong>
+      </span>
+
+      {hasRejected && (
+        <span className="m3-chip m3-chip--error" title="Registros con inconsistencias aislados">
+          <PixelAlertIcon size={12} />
+          <strong className="tabular-nums">{Number(lote.rechazados).toLocaleString('es-CL')}</strong>
         </span>
+      )}
 
-        <span className="status-chip status-chip--ok" title="Registros válidos procesados">
-          <PixelCheckIcon size={12} />
-          <strong className="tabular-nums">{Number(lote.validos).toLocaleString('es-CL')}</strong>
-          <span>OK</span>
-        </span>
+      <button
+        type="button"
+        className="m3-chip m3-chip--action"
+        onClick={() => downloadRejectedReport()}
+        aria-label={`Descargar reporte Excel de ${lote.rechazados} registros rechazados del lote ${lote.lote_id}`}
+        title="Descargar reporte Excel de rechazos"
+      >
+        <PixelExcelIcon size={13} />
+        <span>.xlsx</span>
+      </button>
 
-        {hasRejected && (
-          <span className="status-chip status-chip--warn" title="Registros rechazados aislados">
-            <PixelAlertIcon size={12} />
-            <strong className="tabular-nums">{Number(lote.rechazados).toLocaleString('es-CL')}</strong>
-            <span>rechazos</span>
-          </span>
-        )}
-
+      {onSelectTab && (
         <button
           type="button"
-          className="btn-pixel btn-pixel--secondary btn-pixel--sm"
-          onClick={() => downloadRejectedReport()}
-          aria-label={`Descargar reporte de ${lote.rechazados} registros rechazados del lote ${lote.lote_id}`}
+          className="m3-chip m3-chip--link"
+          onClick={() => onSelectTab('lotes')}
+          title="Ver trazabilidad completa de corridas RPA"
         >
-          <PixelExcelIcon size={13} />
-          <span>.xlsx</span>
+          <span>Historial →</span>
         </button>
-
-        {onSelectTab && (
-          <button
-            type="button"
-            className="btn-link-teal"
-            onClick={() => onSelectTab('lotes')}
-          >
-            Historial →
-          </button>
-        )}
-      </div>
-    </section>
+      )}
+    </div>
   )
 }

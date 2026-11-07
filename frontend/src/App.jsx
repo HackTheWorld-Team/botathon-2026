@@ -28,7 +28,12 @@ import PlanVsRealView from './views/PlanVsRealView.jsx'
 import LotesView from './views/LotesView.jsx'
 
 /**
- * App.jsx — Layout One-Page de Dos Columnas (Sidebar Izquierdo: Filtros/Categorías + Centro/Derecha: Datos Estilo Excel Redondeado)
+ * App.jsx — Material You (M3) High-Density Dashboard Shell
+ *
+ * Características:
+ * 1. Top App Bar delgada (44px) con marca a la izquierda y Assist Chips de RPA a la derecha
+ * 2. M3 Navigation Rail lateral compacto (68px) con píldora activa rounded-full, liberando >200px para datos
+ * 3. Lienzo principal de alta densidad con Filtros Globales horizontales compactos y scroll interno
  */
 export default function App() {
   const initialRouteRef = useRef(null)
@@ -165,9 +170,9 @@ export default function App() {
 
   function handleTabKeyDown(e, index) {
     let targetIndex = null
-    if (e.key === 'ArrowRight') {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
       targetIndex = (index + 1) % VALID_TABS.length
-    } else if (e.key === 'ArrowLeft') {
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
       targetIndex = (index - 1 + VALID_TABS.length) % VALID_TABS.length
     } else if (e.key === 'Home') {
       targetIndex = 0
@@ -183,7 +188,7 @@ export default function App() {
       const btn = tabRefs.current[nextTab]
       if (btn) btn.focus()
       const meta = TAB_META[nextTab]
-      setLiveMessage(`Pestaña seleccionada: ${meta.label}. Presione Enter o Tab para ir al panel.`)
+      setLiveMessage(`Pestaña seleccionada: ${meta.label}. Presione Enter para ir al panel.`)
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       focusPanelHeading(VALID_TABS[index])
@@ -193,7 +198,7 @@ export default function App() {
   const latestLote = lotes[0] || MOCK_LOTES[0]
 
   return (
-    <div className="app-shell">
+    <div className="m3-app-shell">
       <a className="skip-link" href="#contenido-principal">
         Saltar al contenido principal
       </a>
@@ -205,114 +210,127 @@ export default function App() {
         {alertMessage}
       </div>
 
-      {/* Header Simplificado en Una Sola Fila (Izquierda: Marca/Stack · Derecha: Pestañas) */}
-      <header className="app-header" role="banner">
+      {/* 1. Top App Bar Delgada M3 (44px) */}
+      <header className="m3-top-app-bar" role="banner">
         <h1 className="sr-only">
           Teletón · Planificación Asistencial 2026
         </h1>
-        <div className="app-header__top">
-          <div className="brand-row">
-            <span className="brand-tag">BOTATHON 2026</span>
-            <BrandStackIcons size={14} />
-            <span className="header-meta__badge">WCAG 2.1 AA</span>
-          </div>
 
-          <nav aria-label="Vistas principales del sistema" className="tabs-nav">
-            <div role="tablist" aria-label="Secciones del dashboard asistencial" className="tablist">
-              {VALID_TABS.map((tabId, index) => {
-                const meta = TAB_META[tabId]
-                const isSelected = activeTab === tabId
-                return (
-                  <button
-                    key={tabId}
-                    ref={(el) => {
-                      tabRefs.current[tabId] = el
-                    }}
-                    id={`tab-${tabId}`}
-                    role="tab"
-                    type="button"
-                    aria-selected={isSelected}
-                    aria-controls={`panel-${tabId}`}
-                    aria-current={isSelected ? 'page' : undefined}
-                    tabIndex={isSelected ? 0 : -1}
-                    className={`tab-btn ${isSelected ? 'tab-btn--active' : ''}`}
-                    onClick={() => handleSelectTab(tabId, true)}
-                    onKeyDown={(e) => handleTabKeyDown(e, index)}
-                  >
-                    <TabSimpleIcon tabId={tabId} size={14} />
-                    <span className="tab-btn__label">{meta.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </nav>
+        <div className="m3-top-app-bar__start">
+          <span className="m3-brand-badge">BOTATHON 2026</span>
+          <BrandStackIcons size={13} />
+          <span className="m3-badge m3-badge--neutral">WCAG 2.1 AA</span>
+        </div>
+
+        <div className="m3-top-app-bar__end">
+          <BotStatusBar
+            latestLote={latestLote}
+            onSelectTab={(t) => handleSelectTab(t, true)}
+          />
         </div>
       </header>
 
-      {/* Cuerpo Principal en Dos Columnas: Izquierda (Categorías, Global Filter Headers, Filtros y RPA) · Centro/Derecha (Lista y Datos Foco Principal) */}
-      <div className="app-workspace">
-        <aside className="app-sidebar" aria-label="Categorías, filtros globales y estado RPA">
+      {/* 2. Layout Principal: Navigation Rail (68px) + Main Canvas */}
+      <div className="m3-workspace-layout">
+        {/* Navigation Rail M3 Lateral */}
+        <nav
+          className="m3-nav-rail"
+          aria-label="Navegación principal del dashboard"
+        >
+          <div role="tablist" aria-label="Secciones del dashboard asistencial" className="m3-nav-rail__list">
+            {VALID_TABS.map((tabId, index) => {
+              const meta = TAB_META[tabId]
+              const isSelected = activeTab === tabId
+              return (
+                <button
+                  key={tabId}
+                  ref={(el) => {
+                    tabRefs.current[tabId] = el
+                  }}
+                  id={`tab-${tabId}`}
+                  role="tab"
+                  type="button"
+                  aria-selected={isSelected}
+                  aria-controls={`panel-${tabId}`}
+                  aria-current={isSelected ? 'page' : undefined}
+                  tabIndex={isSelected ? 0 : -1}
+                  className={`m3-nav-rail__item ${isSelected ? 'm3-nav-rail__item--active' : ''}`}
+                  onClick={() => handleSelectTab(tabId, true)}
+                  onKeyDown={(e) => handleTabKeyDown(e, index)}
+                  title={meta.title}
+                >
+                  <span className="m3-nav-rail__indicator">
+                    <TabSimpleIcon tabId={tabId} size={18} />
+                  </span>
+                  <span className="m3-nav-rail__label">{meta.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </nav>
+
+        {/* Lienzo Principal de Alta Densidad */}
+        <div className="m3-main-container">
+          {/* Franja de Filtros Globales Horizontales */}
           <GlobalFilters
             filters={filters}
             catalogs={catalogs}
             onChangeFilter={handleChangeFilter}
             onResetFilters={handleResetFilters}
           />
-          <BotStatusBar
-            latestLote={latestLote}
-            onSelectTab={(t) => handleSelectTab(t, true)}
-          />
-        </aside>
 
-        <main id="contenido-principal" role="main" className="app-main">
-          <div
-            key={activeTab}
-            id={`panel-${activeTab}`}
-            role="tabpanel"
-            aria-labelledby={`tab-${activeTab}`}
-            className="tabpanel-box view-animate-in"
-          >
-            {activeTab === 'resumen' && (
-              <ResumenView
-                kpis={kpis}
-                planVsReal={planVsReal}
-                filters={filters}
-                onChangeFilter={handleChangeFilter}
-                onSelectTab={(t) => handleSelectTab(t, true)}
-              />
-            )}
+          {/* Área de Visualización Activa con Scroll Interno */}
+          <main id="contenido-principal" role="main" className="m3-main-canvas">
+            <div
+              key={activeTab}
+              id={`panel-${activeTab}`}
+              role="tabpanel"
+              aria-labelledby={`tab-${activeTab}`}
+              className="m3-tabpanel-container view-animate-in"
+            >
+              {activeTab === 'resumen' && (
+                <ResumenView
+                  kpis={kpis}
+                  planVsReal={planVsReal}
+                  filters={filters}
+                  onChangeFilter={handleChangeFilter}
+                  onSelectTab={(t) => handleSelectTab(t, true)}
+                />
+              )}
 
-            {activeTab === 'antes-despues' && (
-              <AntesDespuesView
-                filters={filters}
-                onChangeFilter={handleChangeFilter}
-              />
-            )}
+              {activeTab === 'antes-despues' && (
+                <AntesDespuesView
+                  filters={filters}
+                  onChangeFilter={handleChangeFilter}
+                />
+              )}
 
-            {activeTab === 'parametros' && (
-              <ParametrosView
-                onAnnounce={(msg) => {
-                  setLiveMessage(msg)
-                  setAlertMessage('')
-                }}
-              />
-            )}
+              {activeTab === 'parametros' && (
+                <ParametrosView
+                  onAnnounce={(msg) => {
+                    setLiveMessage(msg)
+                    setAlertMessage('')
+                  }}
+                />
+              )}
 
-            {activeTab === 'plan-vs-real' && (
-              <PlanVsRealView
-                planVsReal={planVsReal}
-                filters={filters}
-                onChangeFilter={handleChangeFilter}
-              />
-            )}
+              {activeTab === 'plan-vs-real' && (
+                <PlanVsRealView
+                  planVsReal={planVsReal}
+                  filters={filters}
+                  onChangeFilter={handleChangeFilter}
+                />
+              )}
 
-            {activeTab === 'lotes' && <LotesView lotes={lotes} />}
-          </div>
-        </main>
+              {activeTab === 'lotes' && <LotesView lotes={lotes} />}
+            </div>
+          </main>
+        </div>
       </div>
 
-      <footer className="app-footer" role="contentinfo">
-        <span>Teletón · Botathon 2026</span>
+      {/* 3. Footer Minimalista */}
+      <footer className="m3-footer" role="contentinfo">
+        <span>Teletón · Botathon 2026 · Material You High-Density</span>
       </footer>
     </div>
   )
