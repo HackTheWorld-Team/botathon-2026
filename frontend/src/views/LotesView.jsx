@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   PixelCheckIcon,
   PixelAlertIcon,
-  PixelDownloadIcon,
+  PixelExcelIcon,
 } from '../components/PixelIcons.jsx'
 import {
   MOCK_LOTES,
@@ -166,13 +166,13 @@ export default function LotesView({ lotes = [] }) {
         <div className="view-header__badges">
           <button
             type="button"
-            className="btn-pixel btn-pixel--primary"
+            className="btn-pixel btn-pixel--primary btn-pixel--sm"
             onClick={() => handleDownloadReport(activeLoteObj?.lote_id)}
             aria-label={`Descargar Rejected_Records_Report.xlsx del Lote #${activeLoteObj?.lote_id || 104}`}
           >
-            <PixelDownloadIcon size={16} />
+            <PixelExcelIcon size={14} />
             <span>
-              Descargar Rejected_Records_Report.xlsx (Lote #{activeLoteObj?.lote_id || 104})
+              Rechazos Lote #{activeLoteObj?.lote_id || 104} (.xlsx)
             </span>
           </button>
         </div>
@@ -301,7 +301,7 @@ export default function LotesView({ lotes = [] }) {
                           aria-label={`Descargar Rejected_Records_Report.xlsx para lote ${l.lote_id}`}
                           title={`Descargar reporte Excel del Lote #${l.lote_id}`}
                         >
-                          <PixelDownloadIcon size={14} />
+                          <PixelExcelIcon size={13} />
                           <span>.xlsx</span>
                         </button>
                       </div>
@@ -444,9 +444,9 @@ export default function LotesView({ lotes = [] }) {
                 className="btn-pixel btn-pixel--secondary btn-pixel--sm"
                 onClick={() => handleDownloadReport(loteDetail.lote_id)}
               >
-                <PixelDownloadIcon size={15} />
+                <PixelExcelIcon size={14} />
                 <span>
-                  Descargar Reporte Lote #{loteDetail.lote_id} (.xlsx)
+                  Lote #{loteDetail.lote_id} (.xlsx)
                 </span>
               </button>
             </div>

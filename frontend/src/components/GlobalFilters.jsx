@@ -3,12 +3,7 @@ import { PixelFilterIcon, PixelResetIcon } from './PixelIcons.jsx'
 import { PERIODO_LABELS } from '../api.js'
 
 /**
- * GlobalFilters.jsx — Barra de filtros multinivel persistente y teclado-first (Issue #25, UI_SPEC.md §5)
- *
- * Jerarquía: Nacional -> Instituto (IT) -> Área -> Cargo -> Especialidad -> Mes/Período
- * - <label> explícito y visible en cada <select>
- * - Tecla Escape sobre cualquier filtro restablece a vista Nacional
- * - Chips activos con doble codificación (etiqueta + valor + botón quitar)
+ * GlobalFilters.jsx — Barra de filtros multinivel compacta y centrada
  */
 export default function GlobalFilters({
   filters,
@@ -37,8 +32,8 @@ export default function GlobalFilters({
 
   const selectedInstObj = institutos.find((i) => String(i.it) === String(filters.instituto))
   const scopeLabel = selectedInstObj
-    ? `IT ${selectedInstObj.it} · ${selectedInstObj.sigla} (${selectedInstObj.nombre})`
-    : 'Red Nacional Teletón (16 Institutos)'
+    ? `IT ${selectedInstObj.it} · ${selectedInstObj.sigla}`
+    : 'Red Nacional (16 Sedes)'
 
   return (
     <section
@@ -48,27 +43,26 @@ export default function GlobalFilters({
     >
       <div className="global-filters__header">
         <div className="global-filters__scope">
-          <PixelFilterIcon size={16} />
-          <span className="global-filters__scope-title">Alcance activo:</span>
+          <PixelFilterIcon size={14} />
           <strong className="global-filters__scope-value">{scopeLabel}</strong>
           {filters.mes && (
             <span className="scope-pill">
-              Período: <strong>{PERIODO_LABELS[filters.mes] || filters.mes}</strong>
+              <strong>{PERIODO_LABELS[filters.mes] || filters.mes}</strong>
             </span>
           )}
           {filters.area && (
             <span className="scope-pill">
-              Área: <strong>{filters.area}</strong>
+              <strong>{filters.area}</strong>
             </span>
           )}
           {filters.cargo && (
             <span className="scope-pill">
-              Cargo: <strong>{filters.cargo}</strong>
+              <strong>{filters.cargo}</strong>
             </span>
           )}
           {filters.esp && (
             <span className="scope-pill">
-              Especialidad: <strong>{filters.esp}</strong>
+              <strong>{filters.esp}</strong>
             </span>
           )}
         </div>
@@ -80,7 +74,7 @@ export default function GlobalFilters({
             onClick={() => onChangeFilter('mes', '2026-05-01')}
             aria-pressed={filters.mes === '2026-05-01'}
           >
-            Hito Mayo 2026 (42h)
+            Mayo 2026 (42h)
           </button>
           <button
             type="button"
@@ -89,8 +83,8 @@ export default function GlobalFilters({
             disabled={!hasActiveFilters}
             aria-label="Restablecer todos los filtros a vista Nacional (Atajo: tecla Escape)"
           >
-            <PixelResetIcon size={14} />
-            <span>Restablecer a Nacional (Esc)</span>
+            <PixelResetIcon size={13} />
+            <span>Nacional (Esc)</span>
           </button>
         </div>
       </div>
@@ -102,7 +96,7 @@ export default function GlobalFilters({
       >
         <div className="filter-field">
           <label htmlFor="f-instituto" className="filter-label">
-            1. Instituto (IT / Sede)
+            Instituto (IT)
           </label>
           <div className="select-pixel-wrap">
             <select
@@ -111,7 +105,7 @@ export default function GlobalFilters({
               value={filters.instituto || ''}
               onChange={(e) => onChangeFilter('instituto', e.target.value)}
             >
-              <option value="">Nacional — Todos los Institutos (16)</option>
+              <option value="">Nacional (16)</option>
               {institutos.map((inst) => (
                 <option key={inst.it} value={String(inst.it)}>
                   IT {inst.it} · {inst.sigla} — {inst.nombre}
@@ -123,7 +117,7 @@ export default function GlobalFilters({
 
         <div className="filter-field">
           <label htmlFor="f-mes" className="filter-label">
-            2. Mes / Período 2026
+            Período
           </label>
           <div className="select-pixel-wrap">
             <select
@@ -132,7 +126,7 @@ export default function GlobalFilters({
               value={filters.mes || ''}
               onChange={(e) => onChangeFilter('mes', e.target.value)}
             >
-              <option value="">Anual consolidado (Ene–Dic 2026)</option>
+              <option value="">Anual 2026</option>
               {periodos.map((per) => (
                 <option key={per} value={per}>
                   {PERIODO_LABELS[per] || per}
@@ -144,7 +138,7 @@ export default function GlobalFilters({
 
         <div className="filter-field">
           <label htmlFor="f-area" className="filter-label">
-            3. Área Clínica
+            Área Clínica
           </label>
           <div className="select-pixel-wrap">
             <select
@@ -153,7 +147,7 @@ export default function GlobalFilters({
               value={filters.area || ''}
               onChange={(e) => onChangeFilter('area', e.target.value)}
             >
-              <option value="">Todas las áreas clínicas</option>
+              <option value="">Todas</option>
               {areas.map((area) => (
                 <option key={area} value={area}>
                   {area}
@@ -165,7 +159,7 @@ export default function GlobalFilters({
 
         <div className="filter-field">
           <label htmlFor="f-cargo" className="filter-label">
-            4. Cargo Contractual
+            Cargo
           </label>
           <div className="select-pixel-wrap">
             <select
@@ -174,7 +168,7 @@ export default function GlobalFilters({
               value={filters.cargo || ''}
               onChange={(e) => onChangeFilter('cargo', e.target.value)}
             >
-              <option value="">Todos los cargos</option>
+              <option value="">Todos</option>
               {cargos.map((cargo) => (
                 <option key={cargo} value={cargo}>
                   {cargo}
@@ -186,7 +180,7 @@ export default function GlobalFilters({
 
         <div className="filter-field">
           <label htmlFor="f-esp" className="filter-label">
-            5. Especialidad (SIC)
+            Especialidad
           </label>
           <div className="select-pixel-wrap">
             <select
@@ -195,7 +189,7 @@ export default function GlobalFilters({
               value={filters.esp || ''}
               onChange={(e) => onChangeFilter('esp', e.target.value)}
             >
-              <option value="">Todas las especialidades</option>
+              <option value="">Todas</option>
               {especialidades.map((esp) => (
                 <option key={esp} value={esp}>
                   {esp}

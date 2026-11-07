@@ -273,16 +273,16 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
       <div className="view-header">
         <div>
           <h2 id="panel-heading-plan-vs-real" tabIndex="-1" className="view-title">
-            Cumplimiento Asistencial: Planificado vs. Real (SIC)
+            Planificado vs. Real (SIC)
           </h2>
           <p className="view-subtitle">
-            Evaluación de brechas asistenciales frente al Plan Directo (100%) y la Meta de Gestión exigible (90%) con semáforo accesible de doble codificación WCAG 2.1 AA.
+            Brechas frente al Plan Directo (100%) y Meta de Gestión (90%)
           </p>
         </div>
 
         <div className="view-header__badges">
           <span className="status-badge">
-            Total Plan: {summaryCounts.totalPlan.toLocaleString('es-CL')} · Real SIC:{' '}
+            Plan: {summaryCounts.totalPlan.toLocaleString('es-CL')} · Real:{' '}
             {summaryCounts.totalReal.toLocaleString('es-CL')}
           </span>
         </div>

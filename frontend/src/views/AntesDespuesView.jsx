@@ -263,23 +263,22 @@ export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
       <div className="view-header">
         <div>
           <h2 id="panel-heading-antes-despues" tabIndex="-1" className="view-title">
-            Comparación Versionada por Delta (Antes vs. Después · Vigencia No Retroactiva)
+            Comparación por Delta (Antes vs. Después)
           </h2>
           <p className="view-subtitle">
-            Auditoría del <strong>Lote Base Ene–Abr (44h) [Lote #102]</strong> frente al{' '}
-            <strong>Lote Delta Mayo 2026 (42h + Altas + Multi-sede) [Lote #104]</strong>: meses cerrados 100% congelados y recálculo prospectivo desde el período de corte.
+            <strong>Lote #102 (Ene–Abr 44h)</strong> vs. <strong>Lote #104 (Mayo 2026 42h)</strong> · Meses cerrados congelados
           </p>
         </div>
 
         <div className="view-header__badges">
           <span className="status-badge status-badge--cumplido">
-            <PixelCheckIcon size={15} />
-            <span>Ene–Abr 2026: Inmutable (0 Δ)</span>
+            <PixelCheckIcon size={13} />
+            <span>Ene–Abr: 0 Δ</span>
           </span>
           <span className="status-badge status-badge--teal">
-            <PixelTrendUpIcon size={15} />
+            <PixelTrendUpIcon size={13} />
             <span>
-              Deltas Mayo 2026: {resumenCounts.CAMBIO_JORNADA || 140} contratos 44h→42h ·{' '}
+              Mayo: {resumenCounts.CAMBIO_JORNADA || 140} (42h) ·{' '}
               {resumenCounts.MULTI_SEDE || 2} Multi-sede · {resumenCounts.ALTA || 2} Altas
             </span>
           </span>
@@ -445,14 +444,8 @@ export default function AntesDespuesView({ filters = {}, onChangeFilter }) {
             </strong>
           </div>
           <p className="non-retroactive-banner__text">
-            <strong>¿Por qué Enero a Abril 2026 permanecen 100% congelados?</strong> Cuando el bot
-            Blue Prism procesa el lote de actualización de Mayo 2026 (Ley de 42 horas semanales,
-            nuevas contrataciones y ajustes multi-sede), el motor de cálculo aplica la cláusula{' '}
-            <code>WHERE periodo &gt;= &apos;{periodoCorte}&apos;</code>. Los períodos ya cerrados (
-            <strong>Enero, Febrero, Marzo y Abril 2026</strong>) conservan intacta su jornada
-            histórica de 44h y su Plan Directo original (<code>inmutable: true</code>,{' '}
-            <strong>0 Δ retroactivo</strong>), garantizando trazabilidad contable y clínica ante
-            auditorías.
+            <strong>Enero a Abril 2026 congelados (0 Δ):</strong> el recálculo aplica{' '}
+            <code>WHERE periodo &gt;= &apos;{periodoCorte}&apos;</code>, preservando intactos los meses históricos.
           </p>
         </div>
 

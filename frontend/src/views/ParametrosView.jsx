@@ -593,16 +593,16 @@ export default function ParametrosView({ onAnnounce }) {
       <div className="view-header">
         <div>
           <h2 id="panel-heading-parametros" tabIndex="-1" className="view-title">
-            Parámetros Clínicos, Simulación de Impacto y Auditoría
+            Parámetros Clínicos y Simulación
           </h2>
           <p className="view-subtitle">
-            Administración sin código de distribución horaria (% Directo / Indirecto / NAS), simulación de cobertura de vacantes, catálogo V°B° DMN y trazabilidad prospectiva no retroactiva.
+            Distribución (% Dir / Ind / NAS), vacantes, V°B° DMN y auditoría prospectiva
           </p>
         </div>
         <div className="view-header__badges">
           <span className="status-badge status-badge--cumplido">
-            <PixelCheckIcon size={15} />
-            <span>Enero–Abril 2026 Congelados (No Retroactivo)</span>
+            <PixelCheckIcon size={13} />
+            <span>Ene–Abr Congelados</span>
           </span>
         </div>
       </div>

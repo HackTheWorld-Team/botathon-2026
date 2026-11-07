@@ -18,6 +18,7 @@ import {
   buildMockPlanVsReal,
   PERIODO_LABELS,
 } from './api.js'
+import { BrandStackIcons, TabSimpleIcon } from './components/PixelIcons.jsx'
 import BotStatusBar from './components/BotStatusBar.jsx'
 import GlobalFilters from './components/GlobalFilters.jsx'
 import ResumenView from './views/ResumenView.jsx'
@@ -27,18 +28,9 @@ import PlanVsRealView from './views/PlanVsRealView.jsx'
 import LotesView from './views/LotesView.jsx'
 
 /**
- * App.jsx — Shell One-Page Accesible WCAG 2.1 AA (Issues #46, #24, #25)
- *
- * Cumple UI_SPEC.md §5:
- * 1. Parseo determinista del hash ANTES del primer render (#/<tab>?instituto=&mes=&cargo=&esp=&area=)
- * 2. Header con marca Teletón + WAI-ARIA Tabs (role="tablist/tab/tabpanel", flechas <-/->, Home/End)
- * 3. Statusbar del bot Blue Prism SIEMPRE visible
- * 4. Barra de filtros globales teclado-first SIEMPRE visible
- * 5. Gestión de foco al cambiar de pestaña (foco al <h2 tabIndex="-1"> del panel activo)
- * 6. Live regions polite/assertive para lector de pantalla
+ * App.jsx — Shell One-Page Accesible WCAG 2.1 AA, Compacto y Centrado para Notebook
  */
 export default function App() {
-  // Parsear hash ANTES del primer render (UI_SPEC.md §5)
   const initialRouteRef = useRef(null)
   if (!initialRouteRef.current) {
     initialRouteRef.current = parseHash(
@@ -60,7 +52,6 @@ export default function App() {
 
   const tabRefs = useRef({})
 
-  // Normalizar URL inicial si estaba vacía o inválida (silencioso con replaceState)
   useEffect(() => {
     replaceFiltersHash(activeTab, filters)
     const meta = TAB_META[activeTab] || TAB_META.resumen
@@ -69,7 +60,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Escuchar navegación del historial (Atrás / Adelante / cambio manual de hash)
   useEffect(() => {
     function handlePopState() {
       const parsed = parseHash(window.location.hash)
@@ -87,7 +77,6 @@ export default function App() {
     }
   }, [])
 
-  // Cargar catálogos y lotes al montar
   useEffect(() => {
     let active = true
     fetchFiltros().then((res) => {
@@ -101,10 +90,8 @@ export default function App() {
     }
   }, [])
 
-  // Recalcular / consultar KPIs y Plan vs Real cada vez que cambian los filtros
   useEffect(() => {
     let active = true
-    // Actualización inmediata con cálculo determinista para respuesta instantánea
     setKpis(buildMockKpis(filters))
     setPlanVsReal(buildMockPlanVsReal(filters))
 
@@ -207,12 +194,10 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {/* 1. Skip Link — Primero en orden de tabulación (UI_SPEC.md §5) */}
       <a className="skip-link" href="#contenido-principal">
         Saltar al contenido principal
       </a>
 
-      {/* Live regions accesibles para lectores de pantalla (NVDA / JAWS / Orca) */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {liveMessage}
       </div>
@@ -220,66 +205,59 @@ export default function App() {
         {alertMessage}
       </div>
 
-      {/* 2. Header Persistente: Marca + Navegación WAI-ARIA Tabs */}
+      {/* Header Compacto y Centrado */}
       <header className="app-header" role="banner">
         <div className="app-header__top">
           <div className="brand-block">
-            <span className="brand-tag" aria-hidden="true">
-              BOTATHON 2026 · RPA + ANALÍTICA
-            </span>
+            <div className="brand-row">
+              <span className="brand-tag">BOTATHON 2026</span>
+              <BrandStackIcons size={14} />
+              <span className="header-meta__badge">WCAG 2.1 AA</span>
+            </div>
             <h1 className="brand-title">
-              Teletón — Planificación y Control de Gestión Asistencial 2026
+              Teletón · Planificación Asistencial 2026
             </h1>
           </div>
 
-          <div className="header-meta">
-            <span className="header-meta__badge">
-              Datos Ficticios Anonimizados · WCAG 2.1 AA
-            </span>
-          </div>
+          <nav aria-label="Vistas principales del sistema" className="tabs-nav">
+            <div role="tablist" aria-label="Secciones del dashboard asistencial" className="tablist">
+              {VALID_TABS.map((tabId, index) => {
+                const meta = TAB_META[tabId]
+                const isSelected = activeTab === tabId
+                return (
+                  <button
+                    key={tabId}
+                    ref={(el) => {
+                      tabRefs.current[tabId] = el
+                    }}
+                    id={`tab-${tabId}`}
+                    role="tab"
+                    type="button"
+                    aria-selected={isSelected}
+                    aria-controls={`panel-${tabId}`}
+                    aria-current={isSelected ? 'page' : undefined}
+                    tabIndex={isSelected ? 0 : -1}
+                    className={`tab-btn ${isSelected ? 'tab-btn--active' : ''}`}
+                    onClick={() => handleSelectTab(tabId, true)}
+                    onKeyDown={(e) => handleTabKeyDown(e, index)}
+                  >
+                    <TabSimpleIcon tabId={tabId} size={14} />
+                    <span className="tab-btn__label">{meta.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
         </div>
-
-        {/* Patrón WAI-ARIA Tabs (role="tablist/tab") */}
-        <nav aria-label="Vistas principales del sistema" className="tabs-nav">
-          <div role="tablist" aria-label="Secciones del dashboard asistencial" className="tablist">
-            {VALID_TABS.map((tabId, index) => {
-              const meta = TAB_META[tabId]
-              const isSelected = activeTab === tabId
-              return (
-                <button
-                  key={tabId}
-                  ref={(el) => {
-                    tabRefs.current[tabId] = el
-                  }}
-                  id={`tab-${tabId}`}
-                  role="tab"
-                  type="button"
-                  aria-selected={isSelected}
-                  aria-controls={`panel-${tabId}`}
-                  aria-current={isSelected ? 'page' : undefined}
-                  tabIndex={isSelected ? 0 : -1}
-                  className={`tab-btn ${isSelected ? 'tab-btn--active' : ''}`}
-                  onClick={() => handleSelectTab(tabId, true)}
-                  onKeyDown={(e) => handleTabKeyDown(e, index)}
-                >
-                  <span className="tab-btn__index" aria-hidden="true">
-                    0{index + 1}
-                  </span>
-                  <span className="tab-btn__label">{meta.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        </nav>
       </header>
 
-      {/* 3. Statusbar del Bot Blue Prism SIEMPRE visible */}
+      {/* Statusbar del Bot Blue Prism */}
       <BotStatusBar
         latestLote={latestLote}
         onSelectTab={(t) => handleSelectTab(t, true)}
       />
 
-      {/* 4. Filtros Globales Multinivel SIEMPRE visibles */}
+      {/* Filtros Globales Multinivel */}
       <GlobalFilters
         filters={filters}
         catalogs={catalogs}
@@ -287,7 +265,7 @@ export default function App() {
         onResetFilters={handleResetFilters}
       />
 
-      {/* 5. Panel Activo (role="tabpanel") */}
+      {/* Panel Activo (role="tabpanel") con Scroll Interno Homogéneo */}
       <main id="contenido-principal" role="main" className="app-main">
         <div
           id={`panel-${activeTab}`}
@@ -333,14 +311,10 @@ export default function App() {
         </div>
       </main>
 
-      {/* 6. Footer Semántico */}
       <footer className="app-footer" role="contentinfo">
         <div className="app-footer__inner">
           <p>
-            <strong>Botathon 2026 Teletón — &ldquo;Cada hora cuenta&rdquo;</strong> · Solución híbrida Blue Prism RPA + Motor Python determinista + Dashboard React WCAG 2.1 AA.
-          </p>
-          <p className="app-footer__sub">
-            Datos exclusivamente sintéticos/anonimizados (Ley 19.628). Contraste programático verificado ≥4.5:1.
+            <strong>Botathon 2026 Teletón · Cada hora cuenta</strong> · Datos Sintéticos Anonimizados · Contraste AA ≥4.5:1
           </p>
         </div>
       </footer>
