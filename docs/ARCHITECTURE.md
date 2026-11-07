@@ -10,6 +10,7 @@
 | D10 | 07-nov ~01:00 | Blue Prism manual + híbrido (worker Python) | Vigente |
 | D9 | 07-nov ~00:30 | Demo con IA generativa (Claude vs Gemini por decidir) | Pendiente elección |
 
+| D11 | 07-nov ~02:00 | Esquema SQLite normalizado con versionado por lote (9 tablas) | Vigente |
 ---
 
 ## ADR-001 — Stack React + FastAPI + SQLite (D1, D2)
@@ -48,5 +49,25 @@
 - **Decidió:** Líder — 07-nov ~01:00.
 
 ---
+## ADR-006 — Esquema SQLite normalizado con versionado por lote (D11)
+
+ - **Contexto:** El worker (#11) ingiere Excel de contratos y parámetros, valida, calcula deltas y publica a BD. Necesita trazabilidad completa: saber qué lote originó cada fila, poder re-procesar sin duplicados, y consultar KPIs/plan-vs-real por lote (#20). El esquema debe crearse desde BD vacía sin ALTER manual.
+ - **Decisión:** 9 tablas normalizadas con `lote_id` en todas las tablas de datos:
+   - `lotes`: control de versionado (id, timestamp, duración, conteos válidos/rechazados, hash archivo)
+   - `institutos`: catálogo (codigo_it, sigla, nombre, zona)
+   - `contratos`: datos de personal (PK compuesta evita duplicados: PersonaId+IT+Periodo+lote_id)
+   - `parametros_distribucion`: NAS/Directo/Indirecto por tramo/cargo/especialidad
+   - `parametros_grupal`: PctGrupal, NPacientes, AteSemDirGrupal por cargo/especialidad
+   - `asignaciones`: horas especiales (Líder, Tutor, etc.) por cargo/especialidad/instituto
+   - `planes`: resultado del motor de cálculo (PlanAteDir_m, PlanAteInd_m, etc.)
+   - `rechazados`: filas con error (fila_original, datos_json, motivo, severidad)
+   - `sic_real`: atenciones ejecutadas (directas, indirectas, grupales)
+   - Índices en lote_id, persona_id+periodo, it+periodo para queries #20
+ - **Consecuencias:** Trazabilidad 100% por lote; re-procesamiento idempotente (UNIQUE en contratos/planes/sic_real); queries KPI/plan-vs-real sin JOIN imposibles; compatible con worker CLI y FastAPI.
+ - **Decidió:** Agente IA (opencode) con validación del Líder — 07-nov ~02:00.
+
+---
+
+*(Nuevas decisiones se agregan como ADR-007, ADR-008… con fecha y quién decidió.)*
 
 *(Nuevas decisiones se agregan como ADR-006, ADR-007… con fecha y quién decidió.)*

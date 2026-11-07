@@ -13,6 +13,7 @@
 | 07-nov ~03:00 | opencode · z-ai/glm | Gobernanza de agentes | AGENTS.md (modo de trabajo + protocolo de documentación autónoma), ARCHITECTURE.md (ADR-001…005), AI_USAGE_LOG.md (este archivo), .gitignore | `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/AI_USAGE_LOG.md`, `.gitignore` | Líder |
 | 07-nov ~03:15 | opencode · z-ai/glm | Planificación de issues (épicas + subtareas) | 7 épicas (#4–#10, label `epic`, no dispatcheables) + 24 subtareas conceptuales vinculadas (#11–#34) vía gh cli, agrupadas: ingesta/bot, motor, backend, dashboard, SIC, demo, gobernanza | GitHub Issues #4–#34 | Líder |
 | 07-nov ~03:30 (en curso) | opencode · z-ai/glm | Cola IA #12 #14 #16 #19 #23 | Generación: guía Studio Dev A (#12), generador de archivo corrupto (#14), seed SQLite (#16), esquema DDL (#19), scaffold Vite WCAG (#23) — branches `feat/issue-<n>` + PR revisables por cosmolinda/isabelrosemc | ver PRs de cada issue | Líder + dev del área (review) |
+| 07-nov ~03:45 | opencode · z-ai/glm | Issue #19: DDL SQLite normalizado con versionado por lote | Esquema DDL (9 tablas), db.py (init + CRUD + verificación), tests (8 tests pasando), ADR-006 en ARCHITECTURE.md | `backend/schema.sql`, `backend/db.py`, `backend/test_db.py`, `docs/ARCHITECTURE.md` (ADR-006) | Líder |
 
 ---
 
