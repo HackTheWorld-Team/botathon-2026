@@ -311,11 +311,7 @@ export default function App() {
       </main>
 
       <footer className="app-footer" role="contentinfo">
-        <div className="app-footer__inner">
-          <p>
-            <strong>Botathon 2026 Teletón · Cada hora cuenta</strong> · Datos Sintéticos Anonimizados · Contraste AA ≥4.5:1
-          </p>
-        </div>
+        <span>Teletón · Botathon 2026</span>
       </footer>
     </div>
   )

@@ -1264,33 +1264,16 @@ h2[tabindex="-1"]:focus {
 }
 
 /* ==========================================================================
-   Footer Compacto
+   Footer Minimalista
    ========================================================================== */
 .app-footer {
   border-top: 1px solid var(--border-soft);
-  background: rgba(237, 251, 249, 0.72);
-  padding: 5px 16px;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 3px 12px;
   flex-shrink: 0;
-}
-
-.app-footer__inner {
-  max-width: 1380px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 0.76rem;
-  text-align: center;
-}
-
-.app-footer p {
-  margin: 0;
-}
-
-.app-footer__sub {
+  font-size: 0.72rem;
   color: var(--ink-2);
+  text-align: center;
 }
 
 /* ==========================================================================
