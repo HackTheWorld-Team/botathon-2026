@@ -100,6 +100,20 @@ CREATE TABLE IF NOT EXISTS rechazados (
     payload     TEXT                          -- fila original en JSON
 );
 
+CREATE TABLE IF NOT EXISTS deltas (
+    delta_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    lote_id     INTEGER NOT NULL REFERENCES lotes(lote_id),
+    periodo     TEXT NOT NULL,
+    persona_id  INTEGER NOT NULL,
+    it          INTEGER NOT NULL REFERENCES institutos(it),
+    tipo_delta  TEXT NOT NULL CHECK (tipo_delta IN ('ALTA', 'BAJA', 'CAMBIO_JORNADA', 'MULTI_SEDE')),
+    valor_anterior TEXT,
+    valor_nuevo TEXT,
+    detalle     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_deltas_lote ON deltas(lote_id);
+CREATE INDEX IF NOT EXISTS idx_deltas_periodo ON deltas(periodo);
+
 CREATE TABLE IF NOT EXISTS sic_real (
     sic_id      INTEGER PRIMARY KEY AUTOINCREMENT,
     lote_id     INTEGER NOT NULL REFERENCES lotes(lote_id),
