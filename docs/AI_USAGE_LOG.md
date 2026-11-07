@@ -15,6 +15,10 @@
 
 ---
 
+| 07-nov ~04:55 | opencode · z-ai/glm | Issue #29: BUK mayo para demo | Script reproducible (seed 42) genera BUK_Dotacion_2026_Mayo.xlsx en bot/entrada/ con: ≥1 alta nueva (PID=141845), ≥1 cambio 44→42h (140 personas), multi-sede 125129 (Ant 35h/4d + Cal 8h/1d) según Excepciones; meses anteriores intactos; verificado reproducible | `tools/generar_buk_mayo.py`, `bot/entrada/BUK_Dotacion_2026_Mayo.xlsx` | Líder |
+
+---
+
 ### Uso de IA a declarar en el pitch (resumen acumulado)
 
 1. **Análisis de datos y reglas de negocio** (ingeniería inversa del Excel, 4 dudas operacionales) — opencode/GLM con supervisión humana.
