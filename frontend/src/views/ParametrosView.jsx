@@ -785,8 +785,8 @@ export default function ParametrosView({ onAnnounce }) {
           {/* Barra apilada visual de proporción Dir / Ind / NAS */}
           <div
             style={{
-              padding: '12px 16px',
-              border: '2px solid var(--onyx)',
+              padding: '10px 14px',
+              border: '1px solid var(--border-mid)',
               background: 'var(--pearl-tint)',
             }}
           >
@@ -800,19 +800,19 @@ export default function ParametrosView({ onAnnounce }) {
           {/* Toggle Deseable Oficial: Simular Cobertura de Vacantes */}
           <div
             style={{
-              padding: '16px',
-              border: '2px solid var(--onyx)',
-              background: 'var(--white)',
+              padding: '12px 14px',
+              border: '1px solid var(--border-mid)',
+              background: 'rgba(255, 255, 255, 0.92)',
               boxShadow: 'var(--shadow-sm)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px',
+              gap: '10px',
             }}
           >
             <div
               style={{
                 display: 'flex',
-                justifyContent: 'space-between',
+                justifyContent: 'center',
                 alignItems: 'center',
                 gap: '12px',
                 flexWrap: 'wrap',
@@ -1084,12 +1084,12 @@ export default function ParametrosView({ onAnnounce }) {
             <div
               role="status"
               style={{
-                marginTop: '16px',
-                padding: '12px 16px',
-                border: '2px solid var(--onyx)',
-                background: 'var(--pearl-aqua)',
+                marginTop: '12px',
+                padding: '10px 14px',
+                border: '1px solid var(--border-mid)',
+                background: 'var(--surface-pill)',
                 display: 'flex',
-                justifyContent: 'space-between',
+                justifyContent: 'center',
                 alignItems: 'center',
                 gap: '12px',
                 flexWrap: 'wrap',

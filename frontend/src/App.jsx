@@ -265,13 +265,14 @@ export default function App() {
         onResetFilters={handleResetFilters}
       />
 
-      {/* Panel Activo (role="tabpanel") con Scroll Interno Homogéneo */}
+      {/* Panel Activo (role="tabpanel") con Transición Suave y Scroll Interno */}
       <main id="contenido-principal" role="main" className="app-main">
         <div
+          key={activeTab}
           id={`panel-${activeTab}`}
           role="tabpanel"
           aria-labelledby={`tab-${activeTab}`}
-          className="tabpanel-box"
+          className="tabpanel-box view-animate-in"
         >
           {activeTab === 'resumen' && (
             <ResumenView
