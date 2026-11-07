@@ -261,6 +261,8 @@ Estos son los KPIs que el dashboard debe calcular; cada uno con su fórmula exac
 
 **Semanas hábiles 2026** (para `SemHab_m`): ene 4,2 · feb 4,0 · mar 4,4 · abr 4,2 · **may 3,8** · jun 4,2 · jul 4,4 · ago–dic 4,2 c/u.
 
+**Casos dorados para validar el motor** ("Cálculo correcto" obligatorio): [`tools/casos_dorados.csv`](tools/casos_dorados.csv) — 10 filas reales de `Dotacion_Asistencial` con entradas y resultados esperados: fisiatra 40 h + asignación (137732, reproduce la Duda 1 al decimal: Dir 60,9375% / Ind 14,0625%) · kinesiólogo 42 h con 2 asignaciones · tramo 2 (36 h sin asignaciones) · tramo 3 (20 h) · AS / ED / UTAC con grupal · **multi-sede 115444 (Iqu 36 h + Coy 6 h)** · contrato con término (71269, 10 h). Generador: `tools/extraer_casos_dorados.py`.
+
 **Nota del enunciado:** la tabla entregada (`Planificacion Total`) **no muestra el % FOJA** — el dashboard debe agregarlo (es KPI obligatorio del PDF oficial).
 
 **Zonas geográficas que afectan el cálculo** (PDF oficial): **Arica y Ñuble** (feriados regionales) y **Aysén** (vacaciones) — impactan días hábiles y descuentos; deben ser parametrizables.
@@ -362,12 +364,14 @@ API real BUK/SIC · multi-año · autenticación/perfiles · despliegue producti
 |---|---|---|
 | **Blue Prism** | Bot: monitoreo, ingesta, validación, deltas, publicación | Disponible — **ambiente provisto en la VM del evento** (VM por equipo; resto del stack libre) |
 | **Python (pandas/openpyxl)** | Exploración, SIC sintético, tests vs. totales Excel | Entorno verificado |
-| **Motor de reglas** | Pipeline §4 con redondeos exactos | **Stack: decidir en kickoff** |
-| **BD relacional** (SQLite/PostgreSQL) | Modelo normalizado: dotación, contratos versionados, parámetros, planes, metas, lotes | **Decidir en kickoff** |
-| **Dashboard web** | KPIs, filtros, parametrización, Plan vs. Real, WCAG AA | **Stack: decidir en kickoff** |
+| **Motor de reglas (Python/FastAPI)** | Pipeline §4 con redondeos exactos | **Decidido** |
+| **BD SQLite** (PostgreSQL solo producción) | Modelo normalizado: dotación, contratos versionados, parámetros, planes, metas, lotes | **Decidido** |
+| **Dashboard React (Vite)** servido por FastAPI | KPIs, filtros, parametrización, Plan vs. Real, WCAG AA | **Decidido** |
 | **GitHub + AI-SDLC** | Repo, issues, pipeline §13 | Operativo |
 
 **Criterio de decisión de stack:** lo que el equipo ejecute más rápido a las 2 AM. Elegancia no puntúa.
+
+**Deploy (D7):** desarrollo **local** → despliegue final a la **VM del evento** en ventana 07:00–08:30 con smoke test. FastAPI sirve el build estático de React (carpeta `dist/`) → **un solo proceso en la VM** junto a Blue Prism.
 
 ---
 
@@ -383,21 +387,24 @@ gantt
     axisFormat %H:%M
     section Todos
     Kickoff stack+issues            :k0, 2026-11-06 23:30, 30m
-    Pasada WCAG + lector pantalla   :k4, 2026-11-07 07:00, 1h
-    Congelamiento · video respaldo  :k5, 2026-11-07 08:00, 1h
+    Pasada WCAG + lector pantalla   :k4, 2026-11-07 06:00, 1h
+    Deploy VM + smoke test          :crit, k7, 2026-11-07 07:00, 90m
+    Congelamiento · video respaldo  :k5, 2026-11-07 08:30, 30m
     Ensayo demo ×2                  :crit, k6, 2026-11-07 09:00, 1h
     section Dev A (RPA/datos)
     Bot ingesta+validaciones        :a1, 2026-11-07 00:00, 3h
-    Deltas+42h+SIC sintético        :a2, 2026-11-07 03:00, 2h
-    Integración bot→BD→UI           :a3, 2026-11-07 05:00, 2h
+    Deltas+42h+rechazos             :a2, 2026-11-07 03:00, 2h
+    Integración bot→BD              :a3, 2026-11-07 05:00, 1h
+    Bot en VM + smoke               :a4, 2026-11-07 07:00, 90m
     section Dev B (producto)
-    BD+motor de cálculo             :b1, 2026-11-07 00:00, 3h
-    Dashboard KPIs+filtros          :b2, 2026-11-07 03:00, 2h
-    Parametrización+Plan vs. Real   :b3, 2026-11-07 05:00, 2h
+    FastAPI+SQLite+motor            :b1, 2026-11-07 00:00, 3h
+    React: KPIs+filtros             :b2, 2026-11-07 03:00, 3h
+    Parametrización+Plan vs. Real   :b3, 2026-11-07 06:00, 1h
+    Deploy UI a VM                  :b4, 2026-11-07 07:00, 90m
     section Líder
-    Casos de prueba motor           :l1, 2026-11-07 00:00, 3h
-    Guion demo segundo a segundo    :l2, 2026-11-07 03:00, 2h
-    QA+datos de demo                :l3, 2026-11-07 05:00, 2h
+    Casos dorados + validación      :l1, 2026-11-07 00:00, 3h
+    Guion demo + lámina arquitectura :l2, 2026-11-07 03:00, 3h
+    QA+datos demo+video             :l3, 2026-11-07 06:00, 90m
 ```
 
 
@@ -416,6 +423,8 @@ gantt
 | R5 | Fatiga | Entregables parciales por fase; congelamiento 08:00; buffer sagrado |
 | R6 | Inconsistencias entre hojas (Chi/Cas, OHi) | Fuente de verdad = contratos; Excel solo referencia de validación |
 | R7 | SIC sintético poco creíble | Variación controlada por especialidad para alertas visibles |
+| R8 | Build React / deploy final a VM consume la madrugada | Scaffold Vite mínimo desde el inicio; primero con mock data; **deploy de prueba 04:00**; ventana dedicada 07:00–08:30 |
+| R9 | Uso de IA sin declarar (D9) | Declarar en el pitch qué generó la IA (código, SIC sintético, material de demo) — obligación del doc. oficial |
 
 ---
 
@@ -423,14 +432,15 @@ gantt
 
 | # | Decisión | Dueño | Plazo | Estado |
 |---|---|---|---|---|
-| D1 | Stack motor + dashboard | Equipo | 23:30 | Pendiente |
-| D2 | SQLite vs PostgreSQL | B | 23:30 | Pendiente |
+| D1 | Stack motor + dashboard | Equipo | 23:30 | **Resuelta**: React (Vite) + FastAPI + SQLite |
+| D2 | SQLite vs PostgreSQL | B | 23:30 | **Resuelta**: SQLite (MVP); PostgreSQL solo producción |
 | D3 | Agregar `A.pdf` y set de práctica al repo | L | 00:30 | **Resuelta**: PDF agregado como `requerimientos_oficiales.pdf`; set de práctica sigue ausente |
-| D4 | Quién presenta / opera el bot | L | 05:00 | Pendiente |
+| D4 | Quién presenta / opera el bot | L | 05:00 | **En ensayo 09:00** según fortalezas |
 | D5 | Perfil de variación del SIC sintético | A | 04:00 | **Resuelta**: balanceado, semilla 42 — [§3.4](#34-sic-sintético--generado) |
-| D6 | ¿Vacantes (C1) en el guion o fuera? | L | 07:00 | Pendiente |
-| D7 | ¿Dónde corre el stack? (VM del evento vs laptop + respaldo local) | Equipo | Ahora | Pendiente |
-| D8 | Hora exacta de pitch (3 min) y demo (5 min) el sábado | L | Ahora | Pendiente |
+| D6 | ¿Vacantes (C1) en el guion o fuera? | L | 07:00 | **Resuelta**: fuera del guion (4 pasos oficiales); mencionar como roadmap en pitch |
+| D7 | ¿Dónde corre el stack? (VM del evento vs laptop + respaldo local) | Equipo | Ahora | **Resuelta**: desarrollo local + deploy final a VM (07:00–08:30) |
+| D8 | Hora exacta de pitch (3 min) y demo (5 min) el sábado | L | Ahora | **Resuelta**: confirmado 10:00 sáb (congelar 08:00 · video 08:30 · ensayo 09:00–09:40) |
+| D9 | Material de demo generado con IA generativa (Claude vs Gemini) | L | 07:00 | **Pendiente** elección del modelo; **declarar uso de IA en el pitch** (obligatorio doc. oficial) |
 
 ---
 
@@ -447,6 +457,8 @@ botathon-2026/
 ├── SIC_Atenciones_Reales.xlsx           ← SIC sintético (3.123 filas, perfil balanceado, seed 42)
 ├── tools/generar_sic.py                 ← generador reproducible del SIC (§3.4)
 ├── tools/plan_simplificado_referencia.csv ← plan Dir/Ind por persona×mes (validación del motor)
+├── tools/extraer_casos_dorados.py       ← extrae 10 casos reales de Dotacion_Asistencial
+├── tools/casos_dorados.csv              ← casos de validación del motor (obligatorio "Cálculo correcto")
 ├── trusted-issue-comments.json          ← evidencia pipeline AI-SDLC (issue #2)
 ├── .ai-sdlc.yaml                        ← contrato pipeline (nivel shadow)
 ├── .github/workflows/ai-sdlc.yml        ← pipeline issue→implement→review→merge
