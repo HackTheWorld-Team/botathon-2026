@@ -91,8 +91,8 @@ labels:
 # only — unreachable from GHA runners (ADR-0001). Adjust the ids to what
 # your provider serves.
 model:
-  primary: nvidia/nemotron-3-super-120b-a12b
-  fallback: nvidia/nemotron-3.5-lightning-30b-a3b
+  primary: nvidia/nemotron-3-ultra-550b-a55b
+  fallback: nvidia/nemotron-3.5-bolt-e4b
 
 engine:
   name: scc                    # sc-agent-cli — the certified reference engine
