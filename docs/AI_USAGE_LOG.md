@@ -12,6 +12,7 @@
 | 07-nov 02:30–03:00 | opencode · z-ai/glm | Decisiones D1–D10 | Brief de decisiones con recomendaciones; aplicación de decisiones del líder al README (stack, 100% local, Blue Prism híbrido) | `README.md` §12, §9, §10, §11 | Líder (decidió) |
 | 07-nov ~03:00 | opencode · z-ai/glm | Gobernanza de agentes | AGENTS.md (modo de trabajo + protocolo de documentación autónoma), ARCHITECTURE.md (ADR-001…005), AI_USAGE_LOG.md (este archivo), .gitignore | `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/AI_USAGE_LOG.md`, `.gitignore` | Líder |
 | 07-nov ~03:15 | opencode · z-ai/glm | Planificación de issues (épicas + subtareas) | 7 épicas (#4–#10, label `epic`, no dispatcheables) + 24 subtareas conceptuales vinculadas (#11–#34) vía gh cli, agrupadas: ingesta/bot, motor, backend, dashboard, SIC, demo, gobernanza | GitHub Issues #4–#34 | Líder |
+| 07-nov ~03:30 | opencode · z-ai/glm | Issue #12: docs(bot): guía construcción Blue Prism Studio (híbrido D10) | Guía completa BOT_BUILD_GUIDE.md: 8 VBOs, 14 stages, invocación worker.py, excepciones, rutas locales, checklist Dev A | `bot/BOT_BUILD_GUIDE.md` | Líder |
 
 ---
 
