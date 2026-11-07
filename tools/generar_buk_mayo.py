@@ -89,7 +89,7 @@ def main():
     alta["PersonaId"] = new_pid
     alta["Periodo"] = pd.Timestamp("2026-05-01")
     alta["Fecha Ingreso Compañía"] = pd.Timestamp("2026-05-01")
-    alta["Horas Semanales"] = 44.0  # Nueva contratación a 44h
+    alta["Horas Semanales"] = 42.0  # Nueva contratación: desde 2026-05-01 rige tope legal 42h
     alta["Cargo"] = "KINESIOLOGO (ALTA DEMO)"
     alta["Tipo de Contrato"] = "Indefinido"
     alta["Fecha Término"] = pd.NaT
