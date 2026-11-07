@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.egg-info/
+
+# Node / Vite
+node_modules/
+frontend/dist/
+*.local
+
+# Datos y artefactos generados
+*.db
+*.sqlite
+bot/entrada/*
+bot/procesados/*
+bot/rechazados/*
+bot/reportes/*
+!bot/entrada/.gitkeep
+!bot/procesados/.gitkeep
+!bot/rechazados/.gitkeep
+!bot/reportes/.gitkeep
+
+# Efímeros
+.playwright-mcp/
+*.log
+.DS_Store

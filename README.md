@@ -4,7 +4,7 @@
 
 **Qué:** MVP que automatiza la planificación asistencial de Teletón (hoy: Excel manual de 205 columnas).
 **Lectura:** 20–25 min. Este es el documento de contexto. Reglas y fórmulas completas: [`informe_tecnico_requerimientos.md`](informe_tecnico_requerimientos.md) (fuente de verdad).
-**Sprint:** desafío oficial de **16 h** (doc. [`desafio_cada_hora_cuenta.md`](desafio_cada_hora_cuenta.md)); entrega **sáb 07-nov-2026 10:00** → ~10 h restantes desde ahora. Equipo: 3 (1 líder + 2 técnicos). Blue Prism: ambiente provisto en la **VM del evento**.
+**Sprint:** desafío oficial de **16 h** (doc. [`desafio_cada_hora_cuenta.md`](desafio_cada_hora_cuenta.md)); entrega **sáb 07-nov-2026 10:00**. **Modo de trabajo: 100% local en el PC del líder** (VM del evento descartada; Blue Prism instalado en ese mismo PC). Equipo: 3 (líder + Dev A/RPA + Dev B/producto).
 
 ---
 
@@ -362,7 +362,7 @@ API real BUK/SIC · multi-año · autenticación/perfiles · despliegue producti
 
 | Herramienta | Uso | Estado |
 |---|---|---|
-| **Blue Prism** | Bot: monitoreo, ingesta, validación, deltas, publicación | Disponible — **ambiente provisto en la VM del evento** (VM por equipo; resto del stack libre) |
+| **Blue Prism** | Bot: monitoreo, ingesta, validación, deltas, publicación | Disponible — **instalado en el PC del líder** (modo 100% local; VM descartada). Construcción: **manual + híbrido** ([`bot/BOT_BUILD_GUIDE.md`](bot/BOT_BUILD_GUIDE.md)) |
 | **Python (pandas/openpyxl)** | Exploración, SIC sintético, tests vs. totales Excel | Entorno verificado |
 | **Motor de reglas (Python/FastAPI)** | Pipeline §4 con redondeos exactos | **Decidido** |
 | **BD SQLite** (PostgreSQL solo producción) | Modelo normalizado: dotación, contratos versionados, parámetros, planes, metas, lotes | **Decidido** |
@@ -371,7 +371,7 @@ API real BUK/SIC · multi-año · autenticación/perfiles · despliegue producti
 
 **Criterio de decisión de stack:** lo que el equipo ejecute más rápido a las 2 AM. Elegancia no puntúa.
 
-**Deploy (D7):** desarrollo **local** → despliegue final a la **VM del evento** en ventana 07:00–08:30 con smoke test. FastAPI sirve el build estático de React (carpeta `dist/`) → **un solo proceso en la VM** junto a Blue Prism.
+**Deploy (D7):** sin VM — todo corre **100% local en el PC del líder** (D7 v2). FastAPI sirve el build estático de React (`dist/`) → **un solo proceso** junto a Blue Prism en el mismo equipo. Modo de trabajo declarado en [`AGENTS.md`](AGENTS.md).
 
 ---
 
@@ -388,19 +388,19 @@ gantt
     section Todos
     Kickoff stack+issues            :k0, 2026-11-06 23:30, 30m
     Pasada WCAG + lector pantalla   :k4, 2026-11-07 06:00, 1h
-    Deploy VM + smoke test          :crit, k7, 2026-11-07 07:00, 90m
+    Run local E2E + smoke           :crit, k7, 2026-11-07 07:00, 1h
     Congelamiento · video respaldo  :k5, 2026-11-07 08:30, 30m
     Ensayo demo ×2                  :crit, k6, 2026-11-07 09:00, 1h
     section Dev A (RPA/datos)
     Bot ingesta+validaciones        :a1, 2026-11-07 00:00, 3h
     Deltas+42h+rechazos             :a2, 2026-11-07 03:00, 2h
     Integración bot→BD              :a3, 2026-11-07 05:00, 1h
-    Bot en VM + smoke               :a4, 2026-11-07 07:00, 90m
+    Bot E2E en PC local             :a4, 2026-11-07 07:00, 1h
     section Dev B (producto)
     FastAPI+SQLite+motor            :b1, 2026-11-07 00:00, 3h
     React: KPIs+filtros             :b2, 2026-11-07 03:00, 3h
     Parametrización+Plan vs. Real   :b3, 2026-11-07 06:00, 1h
-    Deploy UI a VM                  :b4, 2026-11-07 07:00, 90m
+    Empaquetado run local           :b4, 2026-11-07 07:00, 1h
     section Líder
     Casos dorados + validación      :l1, 2026-11-07 00:00, 3h
     Guion demo + lámina arquitectura :l2, 2026-11-07 03:00, 3h
@@ -423,7 +423,7 @@ gantt
 | R5 | Fatiga | Entregables parciales por fase; congelamiento 08:00; buffer sagrado |
 | R6 | Inconsistencias entre hojas (Chi/Cas, OHi) | Fuente de verdad = contratos; Excel solo referencia de validación |
 | R7 | SIC sintético poco creíble | Variación controlada por especialidad para alertas visibles |
-| R8 | Build React / deploy final a VM consume la madrugada | Scaffold Vite mínimo desde el inicio; primero con mock data; **deploy de prueba 04:00**; ventana dedicada 07:00–08:30 |
+| R8 | Build React / run end-to-end local consume la madrugada | Scaffold Vite mínimo desde el inicio; primero mock data; **run completo de prueba 04:00**; ventana dedicada 07:00–08:30 |
 | R9 | Uso de IA sin declarar (D9) | Declarar en el pitch qué generó la IA (código, SIC sintético, material de demo) — obligación del doc. oficial |
 
 ---
@@ -438,9 +438,10 @@ gantt
 | D4 | Quién presenta / opera el bot | L | 05:00 | **En ensayo 09:00** según fortalezas |
 | D5 | Perfil de variación del SIC sintético | A | 04:00 | **Resuelta**: balanceado, semilla 42 — [§3.4](#34-sic-sintético--generado) |
 | D6 | ¿Vacantes (C1) en el guion o fuera? | L | 07:00 | **Resuelta**: fuera del guion (4 pasos oficiales); mencionar como roadmap en pitch |
-| D7 | ¿Dónde corre el stack? (VM del evento vs laptop + respaldo local) | Equipo | Ahora | **Resuelta**: desarrollo local + deploy final a VM (07:00–08:30) |
+| D7 | ¿Dónde corre el stack? | Equipo | Ahora | **Resuelta (v2)**: **100% local en el PC del líder**; VM del evento descartada completamente; Blue Prism en el mismo PC |
 | D8 | Hora exacta de pitch (3 min) y demo (5 min) el sábado | L | Ahora | **Resuelta**: confirmado 10:00 sáb (congelar 08:00 · video 08:30 · ensayo 09:00–09:40) |
 | D9 | Material de demo generado con IA generativa (Claude vs Gemini) | L | 07:00 | **Pendiente** elección del modelo; **declarar uso de IA en el pitch** (obligatorio doc. oficial) |
+| D10 | Modo de trabajo de Dev A con Blue Prism | Equipo | Ahora | **Resuelta**: **manual + híbrido** — proceso pequeño en Studio con guía; lógica pesada en `bot/worker.py` (Python testado); sin MCP ni Playwright (no aplicables) |
 
 ---
 
