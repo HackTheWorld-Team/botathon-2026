@@ -3,6 +3,7 @@ import {
   PixelCheckIcon,
   PixelAlertIcon,
   PixelExcelIcon,
+  PixelBookIcon,
 } from '../components/PixelIcons.jsx'
 import {
   MOCK_LOTES,
@@ -12,7 +13,7 @@ import {
   downloadRejectedReport,
 } from '../api.js'
 
-export default function LotesView({ lotes = [] }) {
+export default function LotesView({ lotes = [], easyReading = false }) {
   const sortedLotes = useMemo(() => {
     const base = Array.isArray(lotes) && lotes.length > 0 ? lotes : MOCK_LOTES
     return [...base].sort(
@@ -98,6 +99,19 @@ export default function LotesView({ lotes = [] }) {
 
   return (
     <div className="m3-view-stack">
+      {/* Tarjeta de Lectura Fácil (Comprensión Cognitiva) */}
+      <div className="easy-reading-card" role="region" aria-label="Explicación en lenguaje claro">
+        <h3 className="easy-reading-card__title">
+          <PixelBookIcon size={14} />
+          <span>Lectura Fácil: ¿Qué hace el robot RPA y qué son los Lotes?</span>
+        </h3>
+        <p className="easy-reading-card__text">
+          El robot Blue Prism procesa automáticamente los archivos de dotación y atenciones sin copiar y pegar a mano.
+          Si un archivo contiene errores (horas negativas, códigos de instituto inválidos o contratos repetidos),
+          el robot separa las filas malas en un reporte Excel para que puedan corregirse, procesando solo los datos válidos.
+        </p>
+      </div>
+
       {/* 1. Top KPI Strip Horizontal M3 (~84px) */}
       <section aria-label="Trazabilidad de ejecuciones RPA" className="m3-kpi-strip">
         <article className="m3-kpi-card">

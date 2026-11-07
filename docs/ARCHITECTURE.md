@@ -157,4 +157,26 @@
 
 ---
 
-*(Nuevas decisiones se agregan como ADR-019, ADR-020… con fecha y quién decidió.)*
+## ADR-019 — Accesibilidad Universal Inclusiva para Discapacidad y Navegación 100% Teclado Tab + Enter (Rúbrica Dimensión 6)
+
+- **Contexto:** la rúbrica oficial de semifinales evalúa en su Dimensión 6 (Impacto · Accesibilidad e inclusión) como nivel 4 Destacado: *"Está diseñado para personas con discapacidad (voz, lectura fácil, lector de pantalla, etc.) y lo demuestra"*. Además, se exige que la aplicación completa sea gobernable de principio a fin exclusivamente con las teclas `Tab` y `Enter` (sin ratón y sin requerir flechas direccionales obligatorias).
+- **Decisión:**
+  1. **Navegación 100% con Tab y Enter:**
+     - Ajustar los botones del Navigation Rail a `tabIndex={0}` para que `Tab` / `Shift+Tab` recorra secuencialmente cada pestaña y `Enter` / `Espacio` active la sección y enfoque el contenido de inmediato.
+     - Skip links múltiples al inicio del DOM para saltar con Tab a herramientas de accesibilidad, navegación, filtros o contenido principal.
+     - Anillo de foco universal de alto contraste visible (`:focus-visible` con `outline: 3px solid var(--teal-ink)` y `outline-offset: 2px`).
+  2. **Voz asistencial interactiva (Web Speech API):**
+     - Botón accesible en cabecera (`#btn-a11y-voz`) que sintetiza y lee en voz alta en español (`es-CL`) el resumen asistencial en tiempo real (% FOJA, Meta de Gestión 90%, horas contratadas, dotación y estado del bot RPA). Activación y pausa con `Enter`.
+  3. **Modo Lectura Fácil (Comprensión Cognitiva):**
+     - Toggle de lenguaje claro (`#btn-a11y-lectura-facil`) que despliega tarjetas contextuales en lenguaje llano, eliminando siglas y jerga médica/técnica (explicando FOJA como tiempo con pacientes, Meta 90% como piso obligatorio de atenciones, etc.).
+  4. **Baja Visión, Alto Contraste AAA y Escala de Fuentes:**
+     - Toggle de Modo Alto Contraste AAA (`#btn-a11y-contraste`) con contraste reforzado > 7:1 y foco amarillo ultra nítido.
+     - Selector escalable de fuente (`100%`, `125%`, `150%`) mediante clases semánticas en la raíz HTML.
+  5. **Lector de Pantalla Enriquecido:**
+     - Canales `aria-live="polite"` y `"assertive"` actualizados en cada acción, `aria-label` en deltas (describiendo reducción horaria explícita) y tablas con semántica completa.
+- **Consecuencias:** cumplimiento estricto del nivel 4 (Destacado) de la Dimensión 6 de la rúbrica, garantizando una demostración contundente en el pitch de semifinales; navegabilidad 100% por teclado sin barreras.
+- **Decidió:** Líder (Axel-DaMage) asistido por Antigravity — 07-nov 08:35.
+
+---
+
+*(Nuevas decisiones se agregan como ADR-020, ADR-021… con fecha y quién decidió.)*
