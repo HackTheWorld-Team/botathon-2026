@@ -206,13 +206,10 @@ class CatalogosMotor:
         self.semanas = semanas
 
     @classmethod
-    def desde_db(cls, db_path: str = "backend/db.sqlite") -> "CatalogosMotor":
-        """Carga catálogos desde la base de datos SQLite."""
-        con = sqlite3.connect(db_path)
-        con.row_factory = sqlite3.Row
+    def desde_db_con(cls, con: sqlite3.Connection) -> "CatalogosMotor":
+        """Carga catálogos usando una conexión SQLite existente."""
         cur = con.cursor()
 
-        # Distribución
         dist = {}
         for r in cur.execute("SELECT * FROM parametros_distribucion"):
             cargo = str(r["cargo"]).strip().upper()
@@ -225,7 +222,6 @@ class CatalogosMotor:
                 "min_indirecta": int(r["min_indirecta"]),
             }
 
-        # Grupal
         grup = {}
         for r in cur.execute("SELECT * FROM parametros_grupal"):
             esp = str(r["cod_esp"]).strip().upper()
@@ -235,13 +231,21 @@ class CatalogosMotor:
                 "n_pac_otros": float(r["n_pac_otros"]),
             }
 
-        # Semanas
         sem = {}
         for r in cur.execute("SELECT anio, mes, semanas FROM semanas_habiles"):
             sem[(int(r["anio"]), int(r["mes"]))] = float(r["semanas"])
 
-        con.close()
         return cls(distribucion=dist, grupal=grup, semanas=sem)
+
+    @classmethod
+    def desde_db(cls, db_path: str = "backend/db.sqlite") -> "CatalogosMotor":
+        """Carga catálogos desde la base de datos SQLite."""
+        con = sqlite3.connect(db_path)
+        con.row_factory = sqlite3.Row
+        try:
+            return cls.desde_db_con(con)
+        finally:
+            con.close()
 
 
 def calcular_contrato_mes(

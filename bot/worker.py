@@ -259,7 +259,7 @@ def recalcular_planes_vigentes(
 ) -> int:
     try:
         from backend.motor import CatalogosMotor, calcular_contrato_mes
-        catalogos = CatalogosMotor.desde_db()
+        catalogos = CatalogosMotor.desde_db_con(con)
     except Exception:
         return 0
 
@@ -541,7 +541,9 @@ def validar_y_procesar_buk(
             "total_deltas": len(deltas)
         }
 
+        estado_lote = "OK" if len(rechazados) == 0 else ("CON_RECHAZOS" if len(validos) > 0 else "SIN_PUBLICABLES")
         resumen = {
+            "estado": estado_lote,
             "lote_id": lote_id,
             "archivo": path_archivo.name,
             "tipo": "BUK",
@@ -557,6 +559,7 @@ def validar_y_procesar_buk(
         }
         resumen_json_path = Path(out_dir) / f"resumen_lote_{lote_id}.json"
         resumen_json_path.write_text(json.dumps(resumen, indent=2, ensure_ascii=False), encoding="utf-8")
+        (Path(out_dir) / "ultimo_resultado.json").write_text(json.dumps(resumen, indent=2, ensure_ascii=False), encoding="utf-8")
 
         return resumen
 
@@ -790,7 +793,9 @@ def validar_y_procesar_sic(
             df_vacio = pd.DataFrame(columns=["Fila Origen", "Motivo", "Descripción Error"])
             df_vacio.to_excel(reporte_excel_path, index=False)
 
+        estado_lote = "OK" if len(rechazados) == 0 else ("CON_RECHAZOS" if len(validos) > 0 else "SIN_PUBLICABLES")
         resumen = {
+            "estado": estado_lote,
             "lote_id": lote_id,
             "archivo": path_archivo.name,
             "tipo": "SIC",
@@ -803,6 +808,7 @@ def validar_y_procesar_sic(
         }
         resumen_json_path = Path(out_dir) / f"resumen_lote_sic_{lote_id}.json"
         resumen_json_path.write_text(json.dumps(resumen, indent=2, ensure_ascii=False), encoding="utf-8")
+        (Path(out_dir) / "ultimo_resultado.json").write_text(json.dumps(resumen, indent=2, ensure_ascii=False), encoding="utf-8")
 
         return resumen
 
@@ -825,13 +831,18 @@ def procesar_archivo(
 
 def main():
     parser = argparse.ArgumentParser(description="Worker CLI para ingesta de BUK y SIC a SQLite.")
-    parser.add_argument("archivo", help="Ruta al archivo .xlsx (BUK o SIC)")
+    parser.add_argument("archivo", nargs="?", help="Ruta al archivo .xlsx (BUK o SIC)")
+    parser.add_argument("--entrada", dest="entrada", help="Ruta al archivo .xlsx (alias Blue Prism)")
     parser.add_argument("--db", default="backend/db.sqlite", help="Ruta a la base de datos SQLite")
     parser.add_argument("--out-dir", default="bot/reportes", help="Directorio de salida para reportes")
     parser.add_argument("--tipo", choices=["BUK", "SIC"], default=None, help="Forzar tipo de archivo")
     args = parser.parse_args()
 
-    resumen = procesar_archivo(args.archivo, args.db, args.out_dir, args.tipo)
+    archivo_target = args.entrada or args.archivo
+    if not archivo_target:
+        parser.error("Debe especificar la ruta al archivo (posicional o vía --entrada)")
+
+    resumen = procesar_archivo(archivo_target, args.db, args.out_dir, args.tipo)
     print(f"Lote #{resumen['lote_id']} procesado ({resumen['tipo']}):")
     print(f"  Archivo: {resumen['archivo']}")
     print(f"  Válidos: {resumen['validos']}")
