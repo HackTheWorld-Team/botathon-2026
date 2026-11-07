@@ -4,7 +4,7 @@
 
 **Qué:** MVP que automatiza la planificación asistencial de Teletón (hoy: Excel manual de 205 columnas).
 **Lectura:** 20–25 min. Este es el documento de contexto. Reglas y fórmulas completas: [`informe_tecnico_requerimientos.md`](informe_tecnico_requerimientos.md) (fuente de verdad).
-**Sprint:** vie 06-nov-2026 23:30 → **sáb 07-nov-2026 10:00** (~10,5 h). Equipo: 3 (1 líder + 2 técnicos). Blue Prism disponible.
+**Sprint:** desafío oficial de **16 h** (doc. [`desafio_cada_hora_cuenta.md`](desafio_cada_hora_cuenta.md)); entrega **sáb 07-nov-2026 10:00** → ~10 h restantes desde ahora. Equipo: 3 (1 líder + 2 técnicos). Blue Prism: ambiente provisto en la **VM del evento**.
 
 ---
 
@@ -61,11 +61,14 @@ flowchart LR
 | `Nac - Base contratos x mes.xlsx` | Input primario (reporte BUK real) | Presente |
 | `Nac - Planificación Asistencial x mes.xlsx` | Modelo actual + diccionario de reglas | Presente |
 | `requerimientos_oficiales.pdf` | Enunciado oficial del desafío | Presente (renombrado desde `A.pdf`) |
+| `desafio_cada_hora_cuenta.md` | Documento oficial transcrito: reglas, obligatorios/deseables, rúbrica de 9 dimensiones | Presente |
 | `SIC_Atenciones_Reales.xlsx` | Input secundario (Plan vs. Real) | **Generado sintético** — [§3.4](#34-sic-sintético--generado) |
 | `tools/generar_sic.py` | Generador reproducible del SIC (semilla fija, perfiles) | Presente |
 | `Botathon 2026 - Teletón Práctica` (set con `Invalid_Records`) | Set de pruebas RPA | **AUSENTE del repo** |
 
 Detalle del SIC generado y cómo regenerarlo: [§3.4](#34-sic-sintético--generado). Decisiones asociadas: [§12](#12-decisiones-pendientes).
+
+**Del documento oficial:** el kit oficial contiene **solo los 2 Excel** (SIC confirmado ausente → nuestro sintético es la vía correcta). Los **casos de prueba y el reporte BUK de la demo serán provistos por la organización** al momento de la demo → la ingesta debe ser tolerante a formatos desconocidos + `Rejected_Records` robusto. No habrá APIs: solo Excel.
 
 ---
 
@@ -300,7 +303,7 @@ Estos son los KPIs que el dashboard debe calcular; cada uno con su fórmula exac
 
 ## 7. Casos de demo (criterios de aceptación)
 
-8 min totales: pitch 3 min + demo 5 min. Guion segundo a segundo en [`informe_tecnico_requerimientos.md`](informe_tecnico_requerimientos.md) §5.
+8 min totales: pitch 3 min + demo 5 min. Rúbrica de 9 dimensiones en [`desafio_cada_hora_cuenta.md`](desafio_cada_hora_cuenta.md). Guion segundo a segundo en [`informe_tecnico_requerimientos.md`](informe_tecnico_requerimientos.md) §5.
 
 | Paso | Tiempo | Qué se muestra | Criterio de aceptación |
 |---|---|---|---|
@@ -357,7 +360,7 @@ API real BUK/SIC · multi-año · autenticación/perfiles · despliegue producti
 
 | Herramienta | Uso | Estado |
 |---|---|---|
-| **Blue Prism** | Bot: monitoreo, ingesta, validación, deltas, publicación | Disponible |
+| **Blue Prism** | Bot: monitoreo, ingesta, validación, deltas, publicación | Disponible — **ambiente provisto en la VM del evento** (VM por equipo; resto del stack libre) |
 | **Python (pandas/openpyxl)** | Exploración, SIC sintético, tests vs. totales Excel | Entorno verificado |
 | **Motor de reglas** | Pipeline §4 con redondeos exactos | **Stack: decidir en kickoff** |
 | **BD relacional** (SQLite/PostgreSQL) | Modelo normalizado: dotación, contratos versionados, parámetros, planes, metas, lotes | **Decidir en kickoff** |
@@ -426,6 +429,8 @@ gantt
 | D4 | Quién presenta / opera el bot | L | 05:00 | Pendiente |
 | D5 | Perfil de variación del SIC sintético | A | 04:00 | **Resuelta**: balanceado, semilla 42 — [§3.4](#34-sic-sintético--generado) |
 | D6 | ¿Vacantes (C1) en el guion o fuera? | L | 07:00 | Pendiente |
+| D7 | ¿Dónde corre el stack? (VM del evento vs laptop + respaldo local) | Equipo | Ahora | Pendiente |
+| D8 | Hora exacta de pitch (3 min) y demo (5 min) el sábado | L | Ahora | Pendiente |
 
 ---
 
@@ -436,6 +441,7 @@ botathon-2026/
 ├── README.md                            ← este documento (contexto maestro)
 ├── requerimientos_oficiales.pdf         ← enunciado oficial (renombrado desde A.pdf)
 ├── informe_tecnico_requerimientos.md    ← fórmulas §3, arquitectura §4, guion §5 (fuente de verdad)
+├── desafio_cada_hora_cuenta.md          ← documento oficial del desafío (16 h, obligatorios, rúbrica 9 dims)
 ├── Nac - Base contratos x mes.xlsx      ← INPUT BUK (Dotacion_2026: 3.123×19, ene–jul, header fila 2)
 ├── Nac - Planificación Asistencial x mes.xlsx ← 8 hojas (476×205 + reglas)
 ├── SIC_Atenciones_Reales.xlsx           ← SIC sintético (3.123 filas, perfil balanceado, seed 42)
