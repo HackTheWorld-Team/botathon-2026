@@ -127,6 +127,13 @@
 - **Consecuencias:** identidad distintiva sin sacrificar WCAG 2.1 AA (diferenciador de rúbrica); shell desacoplado de las vistas (ADR-005); URLs reproducibles para recovery en demo (R2), ensayos y video respaldo.
 - **Decidió:** Líder en sesión de specs — 07-nov ~02:45.
 
+## ADR-016 — Parametrización dinámica sin código, simulación en memoria y auditoría (Issue #21)
+
+- **Contexto:** el documento oficial exige poder modificar reglas de distribución (% Dir/Ind/NAS, minutos estándar, factor grupal y asignaciones con V°B° DMN) sin tocar código, recalculando exclusivamente desde la fecha de vigencia (no retroactivo) y manteniendo trazabilidad de quién, cuándo y qué modificó.
+- **Decisión:** implementar en `backend/main.py` los endpoints `GET /api/parametros`, `POST /api/parametros/simular` (cálculo en memoria sobre copia de `CatalogosMotor` incluyendo proyección opcional de vacantes sin mutar SQLite) y `PATCH /api/parametros` (actualización en BD + recálculo de `planes` restringido a `periodo >= vigencia_desde` + registro inmutable en tabla `auditoria_parametros`), además de `GET /api/deltas` y `GET /api/lotes/{id}/rechazados`.
+- **Consecuencias:** meses previos a la vigencia permanecen 100% congelados y verificables; cada cambio de regla deja rastro completo de auditoría; la UI puede previsualizar el impacto antes de aplicar cambios.
+- **Decidió:** Dev B (isabelrosemc) asistida por Antigravity — 07-nov 04:35.
+
 ---
 
-*(Nuevas decisiones se agregan como ADR-016, ADR-017… con fecha y quién decidió.)*
+*(Nuevas decisiones se agregan como ADR-017, ADR-018… con fecha y quién decidió.)*
