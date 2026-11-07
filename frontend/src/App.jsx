@@ -205,18 +205,16 @@ export default function App() {
         {alertMessage}
       </div>
 
-      {/* Header Compacto y Centrado */}
+      {/* Header Simplificado en Una Sola Fila (Izquierda: Marca/Stack · Derecha: Pestañas) */}
       <header className="app-header" role="banner">
+        <h1 className="sr-only">
+          Teletón · Planificación Asistencial 2026
+        </h1>
         <div className="app-header__top">
-          <div className="brand-block">
-            <div className="brand-row">
-              <span className="brand-tag">BOTATHON 2026</span>
-              <BrandStackIcons size={14} />
-              <span className="header-meta__badge">WCAG 2.1 AA</span>
-            </div>
-            <h1 className="brand-title">
-              Teletón · Planificación Asistencial 2026
-            </h1>
+          <div className="brand-row">
+            <span className="brand-tag">BOTATHON 2026</span>
+            <BrandStackIcons size={14} />
+            <span className="header-meta__badge">WCAG 2.1 AA</span>
           </div>
 
           <nav aria-label="Vistas principales del sistema" className="tabs-nav">
