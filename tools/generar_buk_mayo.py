@@ -47,7 +47,8 @@ def get_schema(df):
     return df.columns.tolist()
 
 # ─── Lógica principal ───
-def main():
+def generar_buk_mayo(out_file: str | Path = OUT_FILE) -> Path:
+    out_file_path = Path(out_file)
     print("=" * 60)
     print("Generando BUK de mayo 2026 para demo")
     print("=" * 60)
@@ -182,15 +183,15 @@ def main():
     print(f"  - Alta nueva (PID={new_pid}): {len(alta_check)} fila(s)")
 
     # 7. Escribir archivo
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    with pd.ExcelWriter(OUT_FILE, engine="openpyxl") as writer:
+    out_file_path.parent.mkdir(parents=True, exist_ok=True)
+    with pd.ExcelWriter(out_file_path, engine="openpyxl") as writer:
         df_out.to_excel(writer, sheet_name="Dotacion_2026", index=False, startrow=1)
         # Escribir headers en fila 1 (0-indexed = fila 2 en Excel)
         ws = writer.sheets["Dotacion_2026"]
         for col_idx, col_name in enumerate(schema, 1):
             ws.cell(row=1, column=col_idx, value=col_name)
 
-    print(f"\n✅ Archivo generado: {OUT_FILE}")
+    print(f"\n✅ Archivo generado: {out_file_path}")
     print(f"   Seed usado: {SEED} (reproducible)")
 
     # 8. Verificar que meses anteriores no cambian (solo lectura)
@@ -199,7 +200,11 @@ def main():
         count = len(df[df["Periodo"] == mes])
         print(f"  {mes[:7]}: {count} filas (inalterado)")
 
-    return OUT_FILE
+    return out_file_path
+
+
+def main():
+    return generar_buk_mayo(OUT_FILE)
 
 
 if __name__ == "__main__":

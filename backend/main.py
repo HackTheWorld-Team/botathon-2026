@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend.motor import (
@@ -32,6 +33,42 @@ from backend.motor import (
 
 DB_PATH_DEFAULT = os.environ.get("BOTATHON_DB_PATH", "backend/db.sqlite")
 _INITIALIZED_DBS: set[Tuple[str, float]] = set()
+_AUTO_SEED_CHECKED: set[str] = set()
+
+
+def _auto_seed_default_db_if_needed(path: str) -> None:
+    """
+    Inicializa automáticamente la base de datos por defecto (backend/db.sqlite) cuando
+    no existe o está vacía, garantizando que levantar `uvicorn backend.main:app` deje
+    el entorno de demo 100% operativo sin pasos manuales.
+    """
+    if path != DB_PATH_DEFAULT or path in _AUTO_SEED_CHECKED:
+        return
+
+    necesita_seed = False
+    if not os.path.exists(path):
+        necesita_seed = True
+    else:
+        try:
+            with sqlite3.connect(path) as con:
+                row = con.execute("SELECT COUNT(*) FROM institutos").fetchone()
+                if not row or row[0] == 0:
+                    necesita_seed = True
+        except sqlite3.Error:
+            necesita_seed = True
+
+    if necesita_seed:
+        try:
+            from tools.preparar_entorno_demo import preparar_entorno_demo, seed_parametros_bd
+
+            if os.environ.get("BOTATHON_AUTO_DEMO", "1") == "1":
+                preparar_entorno_demo(db_path=path, modo="completo")
+            else:
+                seed_parametros_bd(db_path=path)
+        except Exception:
+            pass
+
+    _AUTO_SEED_CHECKED.add(path)
 
 app = FastAPI(
     title="Teletón Botathon 2026 — API Asistencial",
@@ -87,6 +124,7 @@ def _asegurar_tablas_runtime(con: sqlite3.Connection) -> None:
 def get_db(db_path: Optional[str] = None) -> sqlite3.Connection:
     """Abre conexión con SQLite en modo WAL y acceso por nombre de columna."""
     path = db_path or os.environ.get("BOTATHON_DB_PATH", DB_PATH_DEFAULT)
+    _auto_seed_default_db_if_needed(path)
     con = sqlite3.connect(path)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON;")
@@ -1523,4 +1561,10 @@ def get_deltas(
         "comparativa_profesionales": comparativa_profesionales,
         "meses_congelados": meses_congelados,
     }
+
+
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if FRONTEND_DIST.exists():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+
 

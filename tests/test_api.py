@@ -584,3 +584,76 @@ def test_patch_parametros_recalculo_vigencia_y_auditoria(client):
     assert ult_audit["usuario"] == "dra_soto"
     assert ult_audit["planes_recalculados"] == 1
 
+
+def test_e2e_preparar_entorno_demo_y_stack_completo(tmp_path, monkeypatch):
+    """
+    Smoke Test E2E (Issue #55):
+    1. Ejecuta preparar_entorno_demo(db_path=..., modo='completo') creando los 4 lotes de la demo.
+    2. Verifica que /api/kpis, /api/lotes, /api/deltas, /api/plan-vs-real y /api/parametros
+       retornan datos completos y coherentes con el guion de la demo.
+    3. Verifica que '/' sirve el frontend estático (index.html con <div id="root">) cuando frontend/dist existe.
+    """
+    from tools.preparar_entorno_demo import preparar_entorno_demo
+
+    tmp_db = tmp_path / "demo_e2e.sqlite"
+    tmp_in = tmp_path / "entrada"
+    tmp_rep = tmp_path / "reportes"
+
+    res = preparar_entorno_demo(
+        db_path=str(tmp_db),
+        modo="completo",
+        entrada_dir=str(tmp_in),
+        reportes_dir=str(tmp_rep),
+    )
+
+    assert len(res["lotes"]) == 4
+    assert res["lotes"][0]["validos"] == 3123
+    assert res["lotes"][1]["validos"] == 445
+    assert res["lotes"][1]["rechazados"] == 6
+    assert res["lotes"][2]["validos"] == 450
+    assert res["lotes"][3]["validos"] == 3123
+
+    monkeypatch.setenv("BOTATHON_DB_PATH", str(tmp_db))
+    with TestClient(app) as demo_client:
+        # 1. /api/kpis
+        kpis = demo_client.get("/api/kpis?periodo=2026-05-01").json()
+        assert kpis["total_contratos"] >= 450
+        assert kpis["plan_directo_mensual"] > 0
+        assert kpis["meta_gestion_mensual"] > 0
+        assert kpis["foja_pct"] > 0
+
+        # 2. /api/lotes y rechazados del Lote 2
+        lotes = demo_client.get("/api/lotes").json()
+        assert len(lotes) == 4
+        lote_corrupto = next(l for l in lotes if l["rechazados"] == 6)
+        rech_detail = demo_client.get(f"/api/lotes/{lote_corrupto['lote_id']}/rechazados").json()
+        assert rech_detail["total_rechazados"] == 6
+        assert len(rech_detail["resumen_reglas"]) == 6
+
+        # 3. /api/deltas (Mayo 42h vs Abril, multi-sede 125129 y meses congelados ene-abr)
+        deltas = demo_client.get("/api/deltas?periodo_corte=2026-05-01").json()
+        assert deltas["resumen"]["ALTA"] >= 1
+        assert deltas["resumen"]["CAMBIO_JORNADA"] >= 140
+        assert deltas["resumen"]["MULTI_SEDE"] >= 2
+        assert len(deltas["meses_congelados"]) == 4
+        assert all(m["inmutable"] is True for m in deltas["meses_congelados"])
+
+        # 4. /api/plan-vs-real (cruce con SIC Real)
+        pvr = demo_client.get("/api/plan-vs-real?periodo=2026-04-01&agrupado=true").json()
+        assert len(pvr) > 0
+        assert any(item["real_directo"] > 0 for item in pvr)
+
+        # 5. /api/parametros
+        params = demo_client.get("/api/parametros").json()
+        assert len(params["distribucion"]) >= 50
+        assert len(params["grupal"]) == 5
+        assert len(params["semanas_habiles"]) == 12
+
+        # 6. Servido estático de frontend/dist en '/'
+        frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+        if frontend_dist.exists():
+            root_resp = demo_client.get("/")
+            assert root_resp.status_code == 200
+            assert '<div id="root">' in root_resp.text
+
+
