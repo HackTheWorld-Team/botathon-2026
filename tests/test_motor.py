@@ -228,3 +228,152 @@ def test_plan_simplificado_referencia_totales():
             # En el plan simplificado no hay asignaciones ni licencias
             assert res["plan_dir_m"] == int(row["PlanAteDir_m"])
             assert res["plan_ind_m"] == int(row["PlanAteInd_m"])
+
+
+# ==============================================================================
+# TESTS DE RESILIENCIA Y CASOS DE FRONTERA PARA PRODUCCIÓN
+# ==============================================================================
+
+def test_frontera_horas_cero_y_negativas():
+    """
+    Resiliencia ante jornadas atípicas (0h o negativas por corrupción de datos).
+    El motor debe retornar ceros limpios sin lanzar ZeroDivisionError.
+    """
+    assert tramo_inclusivo(0.0) == 3
+    assert tramo_inclusivo(-10.0) == 3
+
+    dist_cero = calcular_distribucion_final(0.0, 0.65, 0.15, 0.20, horas_asignaciones=2.0)
+    assert dist_cero["pct_asistencial"] == 0.0
+    assert dist_cero["pct_directo_final"] == 0.0
+    assert dist_cero["pct_indirecto_final"] == 0.0
+
+    dist_neg = calcular_distribucion_final(-5.0, 0.65, 0.15, 0.20, horas_asignaciones=0.0)
+    assert dist_neg["pct_asistencial"] == 0.0
+
+    ate_cero = calcular_atenciones_semanales(0.0, 0.60, 0.15)
+    assert ate_cero["ate_dir_sem"] == 0
+    assert ate_cero["ate_ind_sem"] == 0
+
+    ate_neg = calcular_atenciones_semanales(-40.0, 0.60, 0.15)
+    assert ate_neg["ate_dir_sem"] == 0
+    assert ate_neg["ate_ind_sem"] == 0
+
+    assert calcular_foja(10.0, 0.0) == 0.0
+    assert calcular_foja(10.0, -40.0) == 0.0
+
+
+def test_frontera_asignacion_excesiva_o_saturante():
+    """
+    Casos donde horas_asignaciones saturan o superan la jornada contratada.
+    El porcentaje asistencial debe acotarse a 0.0 (no volverse negativo).
+    """
+    # Asignación igual a la jornada (40h de asignación en 40h de contrato)
+    dist_sat = calcular_distribucion_final(
+        horas=40.0,
+        pct_directo_base=0.65,
+        pct_indirecto_base=0.15,
+        pct_nas_base=0.20,
+        horas_asignaciones=40.0,
+    )
+    # NAS_tot = 0.20 + (40/40) = 1.20 -> asistencial = max(0, 1 - 1.20) = 0.0
+    assert dist_sat["pct_nas_total"] == pytest.approx(1.20)
+    assert dist_sat["pct_asistencial"] == 0.0
+    assert dist_sat["pct_directo_final"] == 0.0
+    assert dist_sat["pct_indirecto_final"] == 0.0
+
+    # Asignación mayor a la jornada (45h en contrato de 40h)
+    dist_over = calcular_distribucion_final(
+        horas=40.0,
+        pct_directo_base=0.65,
+        pct_indirecto_base=0.15,
+        pct_nas_base=0.20,
+        horas_asignaciones=45.0,
+    )
+    assert dist_over["pct_asistencial"] == 0.0
+    assert dist_over["pct_directo_final"] == 0.0
+    assert dist_over["pct_indirecto_final"] == 0.0
+
+    ate = calcular_atenciones_semanales(40.0, dist_sat["pct_directo_final"], dist_sat["pct_indirecto_final"])
+    assert ate["ate_dir_sem"] == 0
+    assert ate["ate_ind_sem"] == 0
+
+
+def test_frontera_minutos_estandar_invalidos_o_cero():
+    """
+    Protección contra división por cero en minutos estándar (0, negativos o nulos).
+    Debe aplicar fallback seguro a 30 minutos.
+    """
+    ate = calcular_atenciones_semanales(
+        horas=40.0,
+        pct_directo_final=0.60,
+        pct_indirecto_final=0.15,
+        min_directa=0,   # Fallback a 30
+        min_indirecta=-10 # Fallback a 30
+    )
+    # 40 * 0.60 * 60 = 1440 min / 30 = 48
+    # 40 * 0.15 * 60 = 360 min / 30 = 12
+    assert ate["ate_dir_sem"] == 48
+    assert ate["ate_ind_sem"] == 12
+
+
+def test_frontera_semanas_efectivas_descuentos_extremos():
+    """
+    Cuando licencias + vacaciones + permisos superan las semanas hábiles del mes.
+    El cálculo de semanas efectivas debe retornar 0.0 (no negativo) y plan 0.
+    """
+    sem = calcular_semanas_efectivas(semanas_habiles=4.2, licencias=4.0, vacaciones=1.0, permisos=0.5)
+    assert sem == 0.0
+
+    plan = calcular_plan_mensual(ate_dir_total_sem=30.0, ate_ind_sem=10, semanas_efectivas=sem)
+    assert plan["plan_dir_m"] == 0
+    assert plan["plan_ind_m"] == 0
+    assert plan["plan_total_m"] == 0
+    assert plan["mg_dir_m"] == 0
+
+
+def test_frontera_cargos_y_campos_none_o_desconocidos():
+    """
+    Verifica que calcular_contrato_mes maneje cargos desconocidos, valores None
+    o cadenas vacías aplicando fallbacks sin lanzar excepciones.
+    """
+    catalogos = None
+    if DB_PATH.exists():
+        catalogos = CatalogosMotor.desde_db(str(DB_PATH))
+
+    # Cargo y especialidad desconocidos con catalogos cargados
+    res = calcular_contrato_mes(
+        persona_id=999999,
+        it=99,
+        periodo="2026-06-01",
+        cargo="CARGO_NO_EXISTENTE_XYZ",
+        cod_esp="ESP_DESC",
+        horas_semanales=40.0,
+        catalogos=catalogos,
+    )
+    assert res["tramo"] == 1
+    assert res["plan_dir_m"] > 0
+    assert res["mg_dir_m"] == math.floor(res["plan_dir_m"] * 0.90)
+
+    # Valores None o vacíos
+    res_none = calcular_contrato_mes(
+        persona_id=888888,
+        it=131,
+        periodo="2026-05-01",
+        cargo=None,
+        cod_esp=None,
+        horas_semanales=44.0,  # Debe topar a 42h por ser mayo
+        catalogos=catalogos,
+    )
+    assert res_none["horas_efectivas_semanales"] == 42.0
+    assert res_none["tramo"] == 1
+    assert res_none["plan_dir_m"] > 0
+
+
+def test_frontera_transicion_exacta_abril_mayo_42h():
+    """
+    Verifica la transición milimétrica entre 2026-04-30 (44h) y 2026-05-01 (42h).
+    """
+    assert ajustar_tope_42h(44.0, "2026-04-30") == 44.0
+    assert ajustar_tope_42h(44.0, "2026-05-01") == 42.0
+    assert ajustar_tope_42h(45.0, "2026-05-01") == 42.0
+
