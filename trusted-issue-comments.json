@@ -1,18 +1,18 @@
 [
   {
-    "body": "<!-- ai-sdlc:refinement fp:\"7171777edc4a9cdc\" status:\"ready\" armed:\"true\" -->\n✅ **AI-SDLC intake — spec satisfies the Definition of Ready.** Derived acceptance criteria:\n\n- [ ] `README.md` line 1-3 contains a Markdown image badge for the `ai-sdlc` workflow, linked to `https://github.com/HackTheWorld-Team/botathon-2026/actions/workflows/ai-sdlc.yml`\n- [ ] Badge URL follows the pattern `https://github.com/HackTheWorld-Team/botathon-2026/actions/workflows/ai-sdlc.yml/badge.svg`\n- [ ] No other lines of `README.md` are modified\n\nThe `ready-to-implement` arm was restored — this issue re-entered the dispatch queue.",
-    "created_at": "2026-11-07T01:36:22Z"
+    "body": "<!-- ai-sdlc:refinement fp:\"34bb4deb6c04a6aa\" status:\"ready\" armed:\"false\" -->\n✅ **AI-SDLC intake — spec satisfies the Definition of Ready.** Derived acceptance criteria:\n\n- [ ] `python backend/seed.py` puebla Parámetros y Distribucion_NAC en una BD nueva sin errores.\n- [ ] Los conteos y valores coinciden con las hojas fuente (SELECT COUNT + muestra por coordenadas §3.2).\n- [ ] Re-ejecutar no duplica filas (idempotente).\n- [ ] Corre standalone sin frontend ni worker (módulo independiente, AGENTS.md §3).\n- [ ] Falla con mensaje claro si falta la fuente o una coordenada esperada viene vacía.\n\nApply `ready-to-implement` to queue this issue for implementation.",
+    "created_at": "2026-11-07T04:40:05Z"
   },
   {
-    "body": "⚖️ **AI-SDLC label-contradiction repair** — 2026-11-07T01:37:50.158Z\n\nA forbidden label combination was repaired (spec/labels.md → Forbidden combinations):\n\n- removed: `ready-to-implement`\n- vetoed by: `scc:not-ready`\n\nBlocker labels always outrank the dispatch trigger. Resolve or remove\n`scc:not-ready` first, then re-apply the trigger.\n\n<!-- ai-sdlc:label-veto -->\n",
-    "created_at": "2026-11-07T01:37:50Z"
+    "body": "⚖️ **AI-SDLC label-contradiction repair** — 2026-11-07T04:44:15.298Z\n\nA forbidden label combination was repaired (spec/labels.md → Forbidden combinations):\n\n- removed: `ready-to-implement`\n- vetoed by: `scc:not-ready`\n\nBlocker labels always outrank the dispatch trigger. Resolve or remove\n`scc:not-ready` first, then re-apply the trigger.\n\n<!-- ai-sdlc:label-veto -->\n",
+    "created_at": "2026-11-07T04:44:16Z"
   },
   {
-    "body": "✅ **AI-SDLC intake:** DoR passed — queued for implementation (approved surface `7171777edc4a`). Follow the opened PR for progress.\n<!-- ai-sdlc:dor sha256=7171777edc4a9cdc8dd5f84e01dc09f2d1651dbdbdd065f56eb6627ce02c42ea -->",
-    "created_at": "2026-11-07T01:38:02Z"
+    "body": "✅ **AI-SDLC intake:** DoR passed — queued for implementation (approved surface `34bb4deb6c04`). Follow the opened PR for progress.\n<!-- ai-sdlc:dor sha256=34bb4deb6c04a6aa74c0281885694f54d27d3b7e4fdfb1ecf8391aa16d6aeb86 -->",
+    "created_at": "2026-11-07T04:47:29Z"
   },
   {
-    "body": "⚖️ **AI-SDLC label-contradiction repair** — 2026-11-07T01:38:15.167Z\n\nA forbidden label combination was repaired (spec/labels.md → Forbidden combinations):\n\n- removed: `ready-to-implement`\n- vetoed by: `scc:queued`\n\nBlocker labels always outrank the dispatch trigger. Resolve or remove\n`scc:queued` first, then re-apply the trigger.\n\n<!-- ai-sdlc:label-veto -->\n",
-    "created_at": "2026-11-07T01:38:15Z"
+    "body": "🤖 **Dispatch a worker IA** (opencode/GLM, dirección: @Axel-DaMage). Revisor humano: @isabelrosemc. Archivos: `backend/seed.py` (nuevo) — sin choque con #17/#18 (motor). Dev B lo consume, no lo edita.",
+    "created_at": "2026-11-07T04:47:34Z"
   }
 ]
