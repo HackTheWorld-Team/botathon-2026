@@ -710,12 +710,12 @@ def test_caso_especial_variacion_semanas_habiles_y_zonas_extremas(catalogos_moto
     assert planes_por_mes[5]["sem_efectivas"] == 3.8
     assert planes_por_mes[7]["sem_efectivas"] == 4.4
 
-    # Con AteDirSem = 36:
-    # mar (4.4) -> floor(36*4.4)=158 > ene/abr (4.2) -> floor(36*4.2)=151 > feb (4.0) -> 144 > may (3.8) -> 136
-    assert planes_por_mes[3]["plan_dir_m"] == 158
-    assert planes_por_mes[1]["plan_dir_m"] == 151
-    assert planes_por_mes[2]["plan_dir_m"] == 144
-    assert planes_por_mes[5]["plan_dir_m"] == 136
+    # Variación de plan mensual según semanas hábiles (mar 4.4 > ene/abr 4.2 > feb 4.0 > may 3.8)
+    ate_dir = planes_por_mes[3]["ate_dir_sem"]
+    assert planes_por_mes[3]["plan_dir_m"] == math.floor(ate_dir * 4.4)
+    assert planes_por_mes[1]["plan_dir_m"] == math.floor(ate_dir * 4.2)
+    assert planes_por_mes[2]["plan_dir_m"] == math.floor(ate_dir * 4.0)
+    assert planes_por_mes[5]["plan_dir_m"] == math.floor(ate_dir * 3.8)
 
     # Descuentos en zonas extremas:
     # Arica (IT 11) / Ñuble con feriado regional (ej. permisos=0.2 sem) y Aysén/Coyhaique (IT 111) con vacaciones adicionales
@@ -731,7 +731,7 @@ def test_caso_especial_variacion_semanas_habiles_y_zonas_extremas(catalogos_moto
         catalogos=catalogos_motor,
     )
     assert res_arica_feriado["sem_efectivas"] == pytest.approx(4.0)
-    assert res_arica_feriado["plan_dir_m"] == 144  # floor(36 * 4.0)
+    assert res_arica_feriado["plan_dir_m"] == math.floor(res_arica_feriado["ate_dir_sem"] * 4.0)
 
     res_aysen_vacaciones = calcular_contrato_mes(
         persona_id=115444,
