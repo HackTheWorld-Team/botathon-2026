@@ -34,6 +34,8 @@
 - **Consecuencias:** worker 100% testeable contra datos reales; Studio mínima y demostrable; rechazos (`Rejected_Records_Report.xlsx`) y lotes con ID generados por el worker; riesgo residual: config de "Start Process" en Studio — mitigado con guía exacta.
 - **Decidió:** Líder con recomendación del agente — 07-nov ~01:00.
 
+> **v2 (07-nov ~03:15):** el líder reasignó la construcción del proceso en Studio a **Dev B (Isabel)** — issue #52, sí o sí. Dev A mantiene `worker.py`, carpetas, rechazos, deltas/42h e ingesta SIC (#11 #13 #15 #28). Resto de la decisión sin cambios. Nota operativa (D7): Studio vive en el PC del líder → Isabel construye en ese equipo (presencial o dirigida por el líder).
+
 ## ADR-004 — Metodología de ejecución vía issues (ai-sdlc + workers IA)
 
 - **Contexto:** el repo tiene pipeline ai-sdlc operativo (contract `.ai-sdlc.yaml`, nivel shadow) y el líder usa workers locales con IA (opencode, Gemini CLI).

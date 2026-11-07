@@ -20,8 +20,8 @@
 | Rol | Responsabilidad |
 |---|---|
 | Líder (humano) | Decisiones, guion/lámina, QA accesibilidad, datos de demo, dirección de agentes |
-| Dev A (humano) | Bot Blue Prism en Studio (con guía) + integración carpeta→worker→BD |
-| Dev B (humano) | Motor de cálculo, FastAPI, dashboard React |
+| Dev A (humano) | Worker Python del bot + integración carpeta→worker→BD (proceso Studio: Dev B, D10 v2) |
+| Dev B (humano) | Motor de cálculo, FastAPI, dashboard React + **proceso Blue Prism en Studio (#52, D10 v2)** |
 | Agentes IA | Código, docs, análisis, tests — **siempre documentando** (§4) y vía issues (§5) |
 
 ## 3. Estructura del repo (mantener orden; desacoplado)

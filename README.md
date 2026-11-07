@@ -417,8 +417,8 @@ gantt
 
 | Rol | Foco | Issues | Derivable a IA ahora |
 |---|---|---|---|
-| **Dev A** — cosmolinda (RPA/datos) | bot híbrido: worker.py, Studio, carpetas, rechazos, deltas/42h, ingesta SIC | `#11 #13 #15 #28` | — |
-| **Dev B** — isabelrosemc (producto/cálculo) | motor + backend + React WCAG | `#17 #18 #20 #21 #24 #25 #26 #27 #47` | — |
+| **Dev A** — cosmolinda (RPA/datos) | bot híbrido: worker.py, carpetas, rechazos, deltas/42h, ingesta SIC (**Studio → #52, Dev B**) | `#11 #13 #15 #28` | — |
+| **Dev B** — isabelrosemc (producto/cálculo) | motor + backend + React WCAG + **proceso Blue Prism Studio (D10 v2)** | `#17 #18 #20 #21 #24 #25 #26 #27 #47 #52` | — |
 | **Líder** — Axel-DaMage | decisiones/ADR, QA accesibilidad, guion/lámina, datos demo, dispatch, merges, **dueño de la cola IA** | `#29 #30 #31 #32 #33 #34 #49` | — |
 | **Cola IA** (`ai-worker`) | trabajos derivados a worker IA — **sin reviewers humanos asignados**; revisión solo bajo demanda del líder | `#12 #14 #16 #19 #23 #29 #46 #48` | merge por líder |
 
@@ -459,7 +459,7 @@ gantt
 | D7 | ¿Dónde corre el stack? | Equipo | Ahora | **Resuelta (v2)**: **100% local en el PC del líder**; VM del evento descartada completamente; Blue Prism en el mismo PC |
 | D8 | Hora exacta de pitch (3 min) y demo (5 min) el sábado | L | Ahora | **Resuelta**: confirmado 10:00 sáb (congelar 08:00 · video 08:30 · ensayo 09:00–09:40) |
 | D9 | Material de demo generado con IA generativa (Claude vs Gemini) | L | 07:00 | **Pendiente** elección del modelo; **declarar uso de IA en el pitch** (obligatorio doc. oficial) |
-| D10 | Modo de trabajo de Dev A con Blue Prism | Equipo | Ahora | **Resuelta**: **manual + híbrido** — proceso pequeño en Studio con guía; lógica pesada en `bot/worker.py` (Python testado); sin MCP ni Playwright (no aplicables) |
+| D10 | Modo de trabajo de Dev A con Blue Prism | Equipo | Ahora | **Resuelta (v2)**: **manual + híbrido** — proceso pequeño en Studio con guía; lógica pesada en `bot/worker.py` (Python testado); sin MCP ni Playwright (no aplicables). **v2 07-nov ~03:15: construcción del proceso Studio reasignada a Dev B/Isabel (#52)**; Dev A mantiene worker/carpetas/deltas/SIC |
 | D11 | Lenguaje visual y arquitectura de la UI | L | 02:45 | **Resuelta**: pixel-zen minimal (geometría pixel, texto Roboto NO pixel), one-page 5 pestañas (ARIA Tabs + deep-link hash), filtros siempre visibles — [ADR-007](docs/ARCHITECTURE.md) · [`docs/UI_SPEC.md`](docs/UI_SPEC.md) |
 
 ---
