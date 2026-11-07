@@ -173,23 +173,14 @@ function buildMockIndividualPlanVsReal(filters = {}) {
   })
 }
 
-/**
- * PlanVsRealView.jsx — Cruce Plan Asistencial vs. SIC Real con alertas WCAG 2.1 AA (Issue #27, UI_SPEC.md §6)
- *
- * Incluye:
- * 1. Resumen Ejecutivo de Brechas (Top Cards): Déficit Crítico (<90% MG), Meta Cumplida (90–99,9%), Superávit (≥100%).
- * 2. Controles de Vista (Agrupada por Especialidad/Sede vs Detalle Individual por Profesional) y Filtro Rápido por Estado con aria-pressed.
- * 3. Matriz Semántica Plan vs. Real SIC con Brecha explícita (+/−), Barra Segmentada Pixel de 11 bloques y Estado WCAG de doble codificación.
- */
 export default function PlanVsRealView({ planVsReal = [], filters = {}, onChangeFilter }) {
   const [agrupado, setAgrupado] = useState(true)
-  const [statusFilter, setStatusFilter] = useState('TODOS') // 'TODOS' | 'CRITICO' | 'CUMPLIDO' | 'SUPERAVIT'
+  const [statusFilter, setStatusFilter] = useState('TODOS')
   const [individualRows, setIndividualRows] = useState(() =>
     buildMockIndividualPlanVsReal(filters)
   )
   const [isLoadingIndividual, setIsLoadingIndividual] = useState(false)
 
-  // Consultar GET /api/plan-vs-real?agrupado=false cuando se activa vista desagrupada
   useEffect(() => {
     let active = true
     if (agrupado) return undefined
@@ -214,7 +205,7 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
           setIndividualRows(data)
         }
       } catch {
-        // Fallback determinista ya asignado
+        // Fallback determinista
       } finally {
         if (active) setIsLoadingIndividual(false)
       }
@@ -227,9 +218,9 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
   }, [agrupado, filters])
 
   const activeDataset = agrupado ? planVsReal : individualRows
+  const unidadLabel = agrupado ? 'especialidades/sedes' : 'profesionales'
 
-  // Conteos para las 3 tarjetas superiores de Resumen Ejecutivo de Brechas
-  const summaryCounts = useMemo(() => {
+  const summary = useMemo(() => {
     let critico = 0
     let cumplido = 0
     let superavit = 0
@@ -248,6 +239,9 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
       totalMg += Number(row.meta_gestion || 0)
     }
 
+    const brecha = totalReal - totalPlan
+    const cumplimientoPct = totalPlan > 0 ? ((totalReal / totalPlan) * 100).toFixed(1) : '0'
+
     return {
       critico,
       cumplido,
@@ -256,7 +250,8 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
       totalPlan,
       totalReal,
       totalMg,
-      brechaGlobal: totalReal - totalPlan,
+      brecha,
+      cumplimientoPct,
     }
   }, [activeDataset])
 
@@ -265,253 +260,216 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
     return activeDataset.filter((row) => row.alerta?.nivel === statusFilter)
   }, [activeDataset, statusFilter])
 
-  const unidadLabel = agrupado ? 'especialidades/sedes' : 'profesionales'
-
   return (
-    <div className="view-container">
-      {/* Encabezado de Vista */}
-      <div className="view-header">
-        <div>
-          <h2 id="panel-heading-plan-vs-real" tabIndex="-1" className="view-title">
-            Cumplimiento Asistencial: Planificado vs. Real (SIC)
-          </h2>
-          <p className="view-subtitle">
-            Evaluación de brechas asistenciales frente al Plan Directo (100%) y la Meta de Gestión exigible (90%) con semáforo accesible de doble codificación WCAG 2.1 AA.
-          </p>
-        </div>
-
-        <div className="view-header__badges">
-          <span className="status-badge">
-            Total Plan: {summaryCounts.totalPlan.toLocaleString('es-CL')} · Real SIC:{' '}
-            {summaryCounts.totalReal.toLocaleString('es-CL')}
-          </span>
-        </div>
-      </div>
-
-      {/* 1. Resumen Ejecutivo de Brechas (Top Cards) */}
-      <section aria-label="Resumen ejecutivo de brechas asistenciales" className="kpi-grid">
+    <div className="m3-view-stack">
+      {/* 1. Resumen Ejecutivo de Brechas Asistenciales M3 (~84px) */}
+      <section aria-label="Resumen ejecutivo de brechas asistenciales" className="m3-kpi-strip">
         {/* Card 1: Déficit Crítico (< 90% MG) */}
-        <article className="kpi-card">
-          <div className="kpi-card__top">
-            <span className="micro-label">BAJO UMBRAL EXIGIBLE</span>
+        <article className="m3-kpi-card">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label">Bajo Umbral Exigible</span>
             <span
               className="status-badge status-badge--critico"
               style={{ color: 'var(--red-ink)' }}
             >
-              <PixelAlertIcon size={15} />
-              <span>Alerta Prioritaria</span>
+              <PixelAlertIcon size={13} />
+              <span>Déficit Crítico</span>
             </span>
           </div>
-          <h3 className="kpi-card__title">Déficit Crítico (&lt; 90% MG)</h3>
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums" style={{ color: 'var(--red-ink)' }}>
-              {summaryCounts.critico}
-            </p>
-            <span className="kpi-card__unit">
-              de {summaryCounts.total} {unidadLabel}
+          <div className="m3-kpi-card__body">
+            <h3 className="m3-kpi-card__metric tabular-nums" style={{ color: 'var(--red-ink)' }}>
+              {summary.critico}
+            </h3>
+            <span className="m3-kpi-card__sub" style={{ color: 'var(--ink-2)' }}>
+              de {summary.total} {unidadLabel}
             </span>
           </div>
-          <p className="kpi-card__note">
-            Atenciones reales SIC por debajo de la <strong>Meta de Gestión del 90%</strong>. Requiere revisión de capacidad o ausentismo.
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Atenciones SIC por debajo de la <strong>Meta de Gestión (90%)</strong>.
           </p>
         </article>
 
         {/* Card 2: Meta de Gestión Cumplida (90% – 99,9%) */}
-        <article className="kpi-card">
-          <div className="kpi-card__top">
-            <span className="micro-label">DENTRO DE RANGO OPERATIVO</span>
+        <article className="m3-kpi-card">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label">Rango Operativo</span>
             <span
               className="status-badge status-badge--cumplido"
               style={{ color: 'var(--onyx)', borderColor: 'var(--amber-ink)' }}
             >
-              <PixelCheckIcon size={15} />
-              <span>Meta 90% Alcanzada</span>
+              <PixelCheckIcon size={13} />
+              <span>Meta 90%</span>
             </span>
           </div>
-          <h3 className="kpi-card__title">Meta de Gestión Cumplida (90% – 99,9%)</h3>
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums">{summaryCounts.cumplido}</p>
-            <span className="kpi-card__unit" style={{ color: 'var(--amber-ink)' }}>
+          <div className="m3-kpi-card__body">
+            <h3 className="m3-kpi-card__metric tabular-nums">
+              {summary.cumplido}
+            </h3>
+            <span className="m3-kpi-card__sub" style={{ color: 'var(--amber-ink)' }}>
               en rango 90%–99,9%
             </span>
           </div>
-          <p className="kpi-card__note">
-            Supera el piso exigible (<strong>MG ≥ 90%</strong>) acercándose al 100% del Plan Directo proyectado.
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Supera el piso exigible (<strong>MG ≥ 90%</strong>) hacia el 100% del Plan.
           </p>
         </article>
 
         {/* Card 3: Superávit Asistencial (≥ 100% Plan) */}
-        <article className="kpi-card">
-          <div className="kpi-card__top">
-            <span className="micro-label">SOBRE CUMPLIMIENTO</span>
+        <article className="m3-kpi-card">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label">Sobre Cumplimiento</span>
             <span
               className="status-badge status-badge--superavit"
               style={{ color: 'var(--teal-ink)' }}
             >
-              <PixelTrendUpIcon size={15} />
-              <span>≥ 100% del Plan</span>
+              <PixelTrendUpIcon size={13} />
+              <span>≥ 100% Plan</span>
             </span>
           </div>
-          <h3 className="kpi-card__title">Superávit Asistencial (≥ 100% Plan)</h3>
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums" style={{ color: 'var(--teal-ink)' }}>
-              {summaryCounts.superavit}
-            </p>
-            <span className="kpi-card__unit">
-              de {summaryCounts.total} {unidadLabel}
+          <div className="m3-kpi-card__body">
+            <h3 className="m3-kpi-card__metric tabular-nums" style={{ color: 'var(--teal-ink)' }}>
+              {summary.superavit}
+            </h3>
+            <span className="m3-kpi-card__sub" style={{ color: 'var(--teal-ink)' }}>
+              de {summary.total} {unidadLabel}
             </span>
           </div>
-          <p className="kpi-card__note">
-            Ejecución asistencial SIC igual o superior al <strong>100% del Plan Directo</strong> mensual.
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Ejecución asistencial SIC igual o superior al <strong>100% Plan Directo</strong>.
+          </p>
+        </article>
+
+        {/* Card 4: Balance Consolidado Red */}
+        <article className="m3-kpi-card">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label">Cruce Plan vs. SIC</span>
+            <span className="m3-badge m3-badge--teal">
+              {summary.cumplimientoPct}% Global
+            </span>
+          </div>
+          <div className="m3-kpi-card__body">
+            <h3 className="m3-kpi-card__metric tabular-nums">
+              {summary.totalReal.toLocaleString('es-CL')}
+            </h3>
+            <span className="m3-kpi-card__sub" style={{ color: summary.brecha >= 0 ? 'var(--teal-ink)' : 'var(--red-ink)' }}>
+              {summary.brecha >= 0 ? `+${summary.brecha.toLocaleString('es-CL')}` : summary.brecha.toLocaleString('es-CL')} Δ
+            </span>
+          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Plan: {summary.totalPlan.toLocaleString('es-CL')} · Meta: {summary.totalMg.toLocaleString('es-CL')}
           </p>
         </article>
       </section>
 
-      {/* 2. Controles de Vista y Filtro Rápido por Estado + 3. Matriz Semántica Plan vs. Real SIC */}
-      <section aria-labelledby="pvr-matrix-heading" className="panel-section">
-        <div className="panel-section__header">
-          <div>
-            <h3 id="pvr-matrix-heading" className="panel-section__title">
+      {/* 2. Main Sheet Card M3 (>80% Viewport con scroll interno) */}
+      <section aria-labelledby="pvr-matrix-heading" className="m3-sheet-card">
+        {/* Toolbar M3 con Nivel de Agregación y Filtro Rápido */}
+        <div className="m3-sheet-card__toolbar">
+          <div className="m3-sheet-card__title-box">
+            <h2 id="pvr-matrix-heading" className="m3-sheet-card__title">
               Matriz Semántica Plan vs. Real SIC y Semáforo de Doble Codificación WCAG
-            </h3>
-            <p className="panel-section__desc">
-              Alterne entre el consolidado por especialidad/sede y el desglose individual por profesional. Haga clic en una especialidad para filtrar globalmente el dashboard.
-            </p>
+            </h2>
+            <span className="m3-badge m3-badge--neutral">
+              {filteredRows.length} {filteredRows.length === 1 ? 'registro' : 'registros'}
+            </span>
           </div>
 
-          {/* Toggle de Nivel de Agrupación */}
-          <div
-            role="group"
-            aria-label="Nivel de agregación de la matriz Plan vs Real"
-            style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}
-          >
-            <button
-              type="button"
-              aria-pressed={agrupado}
-              className={`btn-pixel btn-pixel--sm ${
-                agrupado ? 'btn-pixel--primary' : 'btn-pixel--secondary'
-              }`}
-              onClick={() => setAgrupado(true)}
-            >
-              Vista Agrupada por Especialidad / Sede
-            </button>
-            <button
-              type="button"
-              aria-pressed={!agrupado}
-              className={`btn-pixel btn-pixel--sm ${
-                !agrupado ? 'btn-pixel--primary' : 'btn-pixel--secondary'
-              }`}
-              onClick={() => setAgrupado(false)}
-            >
-              Detalle Individual por Profesional
-            </button>
+          <div className="m3-sheet-card__actions">
+            {/* Toggle Nivel de Agrupación */}
+            <div role="group" aria-label="Nivel de vista de la matriz" style={{ display: 'inline-flex', gap: '4px' }}>
+              <button
+                type="button"
+                className={`m3-chip ${agrupado ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                aria-pressed={agrupado}
+                onClick={() => setAgrupado(true)}
+              >
+                Vista Agrupada por Especialidad / Sede
+              </button>
+              <button
+                type="button"
+                className={`m3-chip ${!agrupado ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                aria-pressed={!agrupado}
+                onClick={() => setAgrupado(false)}
+              >
+                Detalle Individual por Profesional
+              </button>
+            </div>
+
+            {/* Filtro Rápido por Estado WCAG con Iconos */}
+            <div role="group" aria-label="Filtrar filas por estado WCAG" style={{ display: 'inline-flex', gap: '4px' }}>
+              <button
+                type="button"
+                className={`m3-chip ${statusFilter === 'TODOS' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                aria-pressed={statusFilter === 'TODOS'}
+                onClick={() => setStatusFilter('TODOS')}
+              >
+                Todos ({summary.total})
+              </button>
+              <button
+                type="button"
+                className={`m3-chip ${statusFilter === 'CRITICO' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                style={statusFilter === 'CRITICO' ? { background: 'var(--md-sys-color-error-container)', color: 'var(--red-ink)', borderColor: 'var(--red-ink)' } : {}}
+                aria-pressed={statusFilter === 'CRITICO'}
+                onClick={() => setStatusFilter('CRITICO')}
+              >
+                <PixelAlertIcon size={12} />
+                <span>Solo Déficit Crítico &lt;90% ({summary.critico})</span>
+              </button>
+              <button
+                type="button"
+                className={`m3-chip ${statusFilter === 'CUMPLIDO' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                aria-pressed={statusFilter === 'CUMPLIDO'}
+                onClick={() => setStatusFilter('CUMPLIDO')}
+              >
+                <PixelCheckIcon size={12} />
+                <span>Meta Cumplida 90–99% ({summary.cumplido})</span>
+              </button>
+              <button
+                type="button"
+                className={`m3-chip ${statusFilter === 'SUPERAVIT' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                aria-pressed={statusFilter === 'SUPERAVIT'}
+                onClick={() => setStatusFilter('SUPERAVIT')}
+              >
+                <PixelTrendUpIcon size={12} />
+                <span>Superávit ≥100% ({summary.superavit})</span>
+              </button>
+            </div>
+
+            {filters.esp && (
+              <button
+                type="button"
+                className="m3-chip m3-chip--reset"
+                onClick={() => onChangeFilter && onChangeFilter('esp', '')}
+                title={`Quitar filtro de especialidad (${filters.esp})`}
+              >
+                × {filters.esp}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Filtro Rápido por Estado WCAG */}
-        <div
-          role="group"
-          aria-label="Filtrar filas por estado de cumplimiento WCAG"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-            flexWrap: 'wrap',
-            marginBottom: '16px',
-            paddingBottom: '12px',
-            borderBottom: '1px solid var(--line)',
-          }}
-        >
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              aria-pressed={statusFilter === 'TODOS'}
-              className={`btn-pixel btn-pixel--sm ${
-                statusFilter === 'TODOS' ? 'btn-pixel--primary' : 'btn-pixel--secondary'
-              }`}
-              onClick={() => setStatusFilter('TODOS')}
-            >
-              Todos ({summaryCounts.total})
-            </button>
-
-            <button
-              type="button"
-              aria-pressed={statusFilter === 'CRITICO'}
-              className={`btn-pixel btn-pixel--sm ${
-                statusFilter === 'CRITICO' ? 'btn-pixel--primary' : 'btn-pixel--secondary'
-              }`}
-              onClick={() => setStatusFilter('CRITICO')}
-            >
-              <PixelAlertIcon size={14} />
-              <span>Solo Déficit Crítico &lt;90% ({summaryCounts.critico})</span>
-            </button>
-
-            <button
-              type="button"
-              aria-pressed={statusFilter === 'CUMPLIDO'}
-              className={`btn-pixel btn-pixel--sm ${
-                statusFilter === 'CUMPLIDO' ? 'btn-pixel--primary' : 'btn-pixel--secondary'
-              }`}
-              onClick={() => setStatusFilter('CUMPLIDO')}
-            >
-              <PixelCheckIcon size={14} />
-              <span>Meta Cumplida 90–99% ({summaryCounts.cumplido})</span>
-            </button>
-
-            <button
-              type="button"
-              aria-pressed={statusFilter === 'SUPERAVIT'}
-              className={`btn-pixel btn-pixel--sm ${
-                statusFilter === 'SUPERAVIT' ? 'btn-pixel--primary' : 'btn-pixel--secondary'
-              }`}
-              onClick={() => setStatusFilter('SUPERAVIT')}
-            >
-              <PixelTrendUpIcon size={14} />
-              <span>Superávit ≥100% ({summaryCounts.superavit})</span>
-            </button>
-          </div>
-
-          {filters.esp && (
-            <button
-              type="button"
-              className="btn-link-teal"
-              onClick={() => onChangeFilter && onChangeFilter('esp', '')}
-            >
-              Quitar filtro de especialidad ({filters.esp})
-            </button>
-          )}
-        </div>
-
-        {isLoadingIndividual && !agrupado && (
-          <p role="status" className="panel-section__desc" style={{ marginBottom: '12px' }}>
-            Cargando desglose individual por profesional...
-          </p>
-        )}
-
-        <div className="table-responsive" role="region" aria-labelledby="pvr-matrix-heading" tabIndex="0">
-          <table className="pixel-table">
-            <caption className="sr-only">
-              Matriz de atenciones planificadas versus reales SIC con brecha absoluta, porcentaje de cumplimiento, barra segmentada de 11 bloques y estado WCAG
-            </caption>
+        {/* Viewport de Tabla con Scroll Interno */}
+        <div className="m3-table-viewport" tabIndex="0" role="region" aria-label="Matriz Plan vs Real">
+          <table className="m3-data-table">
             <thead>
               <tr>
+                <th scope="col" className="m3-col-rowidx">#</th>
                 <th scope="col">Especialidad (Cod_Esp)</th>
                 <th scope="col">Instituto / Sede</th>
-                {!agrupado && <th scope="col">Profesional ID</th>}
-                <th scope="col" className="num-col">Plan Directo (100%)</th>
-                <th scope="col" className="num-col">Meta de Gestión (90%)</th>
-                <th scope="col" className="num-col">Atenciones Reales (SIC)</th>
-                <th scope="col" className="num-col">Brecha (Real − Plan)</th>
-                <th scope="col" className="num-col">% Cumplimiento</th>
-                <th scope="col">Barra Segmentada Pixel (Marca 90%)</th>
+                {!agrupado && <th scope="col">Profesional (PersonaId &amp; Nota)</th>}
+                <th scope="col" className="m3-col-num">Plan Directo (100%)</th>
+                <th scope="col" className="m3-col-num">Meta de Gestión (90%)</th>
+                <th scope="col" className="m3-col-num">Atenciones Reales (SIC)</th>
+                <th scope="col" className="m3-col-num">Brecha (Real − Plan)</th>
+                <th scope="col" className="m3-col-num">% Cumplimiento</th>
+                <th scope="col" style={{ width: '135px' }}>Barra Segmentada (Marca 90%)</th>
                 <th scope="col">Estado WCAG (Icono + Badge)</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={agrupado ? 9 : 10} style={{ textAlign: 'center', padding: '20px' }}>
+                  <td colSpan={agrupado ? 10 : 11} style={{ padding: '24px', color: 'var(--ink-2)' }}>
                     No se encontraron registros para el filtro de estado seleccionado.
                   </td>
                 </tr>
@@ -523,101 +481,82 @@ export default function PlanVsRealView({ planVsReal = [], filters = {}, onChange
                   const brecha = realDir - planDir
                   const brechaSign = brecha > 0 ? '+' : brecha < 0 ? '−' : ''
                   const brechaAbs = Math.abs(brecha).toLocaleString('es-CL')
-
-                  const cumpl = Number(
-                    row.cumplimiento_pct ?? (planDir > 0 ? (realDir / planDir) * 100 : 0)
-                  )
                   const desv = Number(
                     row.desviacion_pct ?? (planDir > 0 ? ((realDir - planDir) / planDir) * 100 : 0)
                   )
                   const desvSign = desv > 0 ? '+' : ''
-
-                  const rowKey = `${row.cod_esp}-${row.it || 'nac'}-${row.persona_id || idx}`
+                  const cumpl = Number(
+                    row.cumplimiento_pct ?? (planDir > 0 ? (realDir / planDir) * 100 : 0)
+                  )
+                  const isCritico = row.alerta?.nivel === 'CRITICO'
 
                   return (
                     <tr
-                      key={rowKey}
-                      className={row.alerta?.nivel === 'CRITICO' ? 'row-critico' : ''}
+                      key={`${row.cod_esp}-${row.it || 'nac'}-${row.persona_id || idx}`}
+                      className={isCritico ? 'm3-row--error' : ''}
                     >
-                      <th scope="row">
+                      <td className="m3-col-rowidx">{idx + 1}</td>
+                      <td className="m3-cell-title">
                         <button
                           type="button"
-                          className="btn-link-teal"
+                          className="m3-chip m3-chip--link"
+                          style={{ padding: 0, fontWeight: 700, fontSize: '0.82rem' }}
                           title={`Filtrar globalmente por especialidad ${row.cod_esp}`}
                           onClick={() =>
                             onChangeFilter &&
-                            onChangeFilter(
-                              'esp',
-                              filters.esp === row.cod_esp ? '' : row.cod_esp
-                            )
+                            onChangeFilter('esp', filters.esp === row.cod_esp ? '' : row.cod_esp)
                           }
                         >
                           {row.cod_esp}
                         </button>
-                      </th>
+                      </td>
                       <td>
                         <strong>{row.sigla || 'NAC'}</strong>
                         {row.it ? (
-                          <span className="esp-sub" style={{ marginLeft: '6px', fontSize: '0.8125rem' }}>
+                          <span className="m3-text-muted" style={{ marginLeft: '4px', fontSize: '0.72rem' }}>
                             (IT {row.it})
                           </span>
                         ) : null}
                       </td>
                       {!agrupado && (
-                        <td className="tabular-nums">
-                          <strong>#{row.persona_id || 'S/I'}</strong>
+                        <td>
+                          <span className="tabular-nums font-bold">#{row.persona_id || 'S/I'}</span>
                           {row.nota_clinica && (
-                            <span
-                              className="esp-sub"
-                              style={{ display: 'block', fontSize: '0.8125rem' }}
-                            >
+                            <span className="m3-text-muted" style={{ display: 'block', fontSize: '0.7rem' }}>
                               {row.nota_clinica}
                             </span>
                           )}
                         </td>
                       )}
-                      <td className="num-col tabular-nums">
-                        {planDir.toLocaleString('es-CL')}
-                      </td>
-                      <td className="num-col tabular-nums">
-                        {mgDir.toLocaleString('es-CL')}
-                      </td>
-                      <td className="num-col tabular-nums font-bold">
-                        {realDir.toLocaleString('es-CL')}
-                      </td>
+                      <td className="m3-col-num tabular-nums">{planDir.toLocaleString('es-CL')}</td>
+                      <td className="m3-col-num tabular-nums">{mgDir.toLocaleString('es-CL')}</td>
+                      <td className="m3-col-num tabular-nums font-bold">{realDir.toLocaleString('es-CL')}</td>
                       <td
-                        className="num-col tabular-nums font-bold"
+                        className="m3-col-num tabular-nums font-bold"
                         style={{
                           color:
                             brecha < 0
                               ? 'var(--red-ink)'
                               : brecha > 0
                               ? 'var(--teal-ink)'
-                              : 'var(--onyx)',
+                              : 'inherit',
                         }}
                       >
-                        {brechaSign}
-                        {brechaAbs}{' '}
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 500 }}>
-                          ({desvSign}
-                          {desv.toFixed(1)}%)
+                        {brechaSign}{brechaAbs}{' '}
+                        <span style={{ fontSize: '0.72rem', fontWeight: 500 }}>
+                          ({desvSign}{desv.toFixed(1)}%)
                         </span>
                       </td>
-                      <td className="num-col tabular-nums font-bold">
-                        {cumpl.toFixed(1)}%
-                      </td>
-                      <td style={{ minWidth: '185px' }}>
+                      <td className="m3-col-num tabular-nums font-bold">{cumpl.toFixed(1)}%</td>
+                      <td>
                         <SegmentedBar
                           valuePct={cumpl}
                           targetPct={90}
-                          variant={row.alerta?.nivel === 'CRITICO' ? 'alert' : 'default'}
+                          variant={isCritico ? 'alert' : 'default'}
                         />
                       </td>
                       <td>
-                        <PixelStatusBadge
-                          nivel={row.alerta?.nivel}
-                          texto={row.alerta?.badge}
-                        />
+                        <PixelStatusBadge nivel={row.alerta?.nivel} texto={row.alerta?.badge} />
                       </td>
                     </tr>
                   )

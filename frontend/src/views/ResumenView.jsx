@@ -5,18 +5,16 @@ import {
   PixelAlertIcon,
   PixelTrendUpIcon,
   PixelStatusBadge,
+  PixelExcelIcon,
 } from '../components/PixelIcons.jsx'
 
 /**
- * ResumenView.jsx — Vista principal de Indicadores Clave Asistenciales (Issue #24, UI_SPEC.md §6)
+ * ResumenView.jsx — Vista General Material You (M3) de Alta Densidad
  *
- * Incluye:
- * 1. Tarjeta KPI 1: % FOJA (Factor de Ocupación de Jornada Asistencial) con barra de 11 segmentos
- *    y nota explícita de hallazgo: ausente en tabla Excel legada e incorporado según exigencia oficial.
- * 2. Tarjeta KPI 2: Meta de Gestión (MG 90%) con regla de truncamiento al piso (Duda 3).
- * 3. Tarjeta KPI 3: Plan Asistencial Directo e Indirecto proyectado + dotación activa.
- * 4. Tarjeta KPI 4: Distribución Semanal de Horas (Directas / Indirectas / NAS) con barra apilada.
- * 5. Tabla semántica rápida de estado por Especialidad con doble codificación WCAG 2.1 AA.
+ * Características:
+ * - KPI Strip horizontal compacto superior (grid 4 columnas, padding p-3, altura ~80px)
+ * - Canvas de datos estilo Excel / Sheet que ocupa >80% del viewport vertical restante
+ * - Tarjetas rounded-xl / rounded-2xl y chips rounded-full
  */
 export default function ResumenView({
   kpis,
@@ -42,7 +40,6 @@ export default function ResumenView({
   const totalProf = Number(kpis?.total_profesionales || 0)
   const totalContratos = Number(kpis?.total_contratos || 0)
 
-  // Cumplimiento global real vs plan a partir de las filas de especialidad
   const sumReal = planVsReal.reduce((acc, r) => acc + Number(r.real_directo || 0), 0)
   const sumPlan = planVsReal.reduce((acc, r) => acc + Number(r.plan_directo || 0), 0)
   const globalCumplimientoPct =
@@ -51,231 +48,170 @@ export default function ResumenView({
   const criticosCount = planVsReal.filter((r) => r.alerta?.nivel === 'CRITICO').length
 
   return (
-    <div className="view-container">
-      <div className="view-header">
-        <div>
-          <h2 id="panel-heading-resumen" tabIndex="-1" className="view-title">
-            Resumen Ejecutivo Asistencial
-          </h2>
-          <p className="view-subtitle">
-            Consolidado nacional y por instituto calculado por el motor determinista (reglas piso{' '}
-            <code>⌊·⌋</code> y trazabilidad RPA Blue Prism).
-          </p>
-        </div>
+    <div className="m3-view-stack">
+      <h2 id="panel-heading-resumen" tabIndex="-1" className="sr-only">
+        Resumen Ejecutivo Asistencial
+      </h2>
 
-        <div className="view-header__badges">
-          <span className="status-badge status-badge--cumplido">
-            <PixelCheckIcon size={15} />
-            <span>
-              Dotación activa: <strong className="tabular-nums">{totalProf.toLocaleString('es-CL')}</strong> prof. ({totalContratos.toLocaleString('es-CL')} contratos)
+      {/* 1. KPI Strip Horizontal Superior (Material 3 High Density Strip) */}
+      <section
+        aria-label="Indicadores ejecutivos clave"
+        className="m3-kpi-strip"
+      >
+        {/* KPI 01: % FOJA */}
+        <article className="m3-kpi-card" aria-labelledby="kpi-foja-title">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label" id="kpi-foja-title">
+              % FOJA (Ocupación)
             </span>
-          </span>
-          {criticosCount > 0 && (
-            <span className="status-badge status-badge--critico">
-              <PixelAlertIcon size={15} />
-              <span>
-                {criticosCount} {criticosCount === 1 ? 'especialidad bajo' : 'especialidades bajo'} MG 90%
-              </span>
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* 4 Tarjetas KPI Principales */}
-      <section aria-label="Indicadores clave de planificación asistencial" className="kpi-grid">
-        {/* Card 1: % FOJA */}
-        <article className="kpi-card" aria-labelledby="kpi-title-foja">
-          <div className="kpi-card__top">
-            <span className="micro-label">KPI 01 · OCUPACIÓN CLÍNICA DIRECTA</span>
-            <span className="status-badge status-badge--teal">
-              <PixelCheckIcon size={14} />
-              <span>Estándar Clínico ≥65%</span>
-            </span>
+            <span className="m3-badge m3-badge--teal">≥65% Ref</span>
           </div>
-
-          <h3 id="kpi-title-foja" className="kpi-card__title">
-            % FOJA (Factor Ocupación Jornada Asistencial)
-          </h3>
-
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums">
+          <div className="m3-kpi-card__body">
+            <p className="m3-kpi-card__metric tabular-nums">
               {fojaPct.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
             </p>
-            <span className="kpi-card__formula tabular-nums">
-              {hDir.toLocaleString('es-CL')}h dir / {hCont.toLocaleString('es-CL')}h cont
+            <span className="m3-kpi-card__sub tabular-nums">
+              {hDir.toLocaleString('es-CL', { maximumFractionDigits: 0 })}h / {hCont.toLocaleString('es-CL', { maximumFractionDigits: 0 })}h
             </span>
           </div>
-
           <SegmentedBar
             valuePct={fojaPct}
             targetPct={70}
             variant="teal"
-            caption={`Escala 0–100% (11 segmentos): ${Math.round(fojaPct / 10)} de 10 bloques activos · Meta referencial directa ≥65%`}
           />
-
-          <p className="kpi-card__note">
-            <strong>Hallazgo solucionado:</strong> indicador exigido por dirección clínica que{' '}
-            <em>no existía en la planilla Excel histórica</em>; incorporado de forma nativa en el motor.
-          </p>
         </article>
 
-        {/* Card 2: Meta de Gestión 90% */}
-        <article className="kpi-card" aria-labelledby="kpi-title-mg">
-          <div className="kpi-card__top">
-            <span className="micro-label">KPI 02 · UMBRAL EXIGIBLE (MG 90%)</span>
-            <span className="status-badge status-badge--cumplido">
-              <PixelTrendUpIcon size={14} />
-              <span>Real SIC: {globalCumplimientoPct.toLocaleString('es-CL')}% del plan</span>
+        {/* KPI 02: Meta de Gestión 90% */}
+        <article className="m3-kpi-card" aria-labelledby="kpi-mg-title">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label" id="kpi-mg-title">
+              Meta Gestión 90%
+            </span>
+            <span className="m3-badge m3-badge--secondary">
+              Real {globalCumplimientoPct.toLocaleString('es-CL')}%
             </span>
           </div>
-
-          <h3 id="kpi-title-mg" className="kpi-card__title">
-            Meta de Gestión Asistencial (90% Plan Directo)
-          </h3>
-
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums">
+          <div className="m3-kpi-card__body">
+            <p className="m3-kpi-card__metric tabular-nums">
               {metaGestion.toLocaleString('es-CL')}
             </p>
-            <span className="kpi-card__unit">atenciones directas exigibles</span>
+            <span className="m3-kpi-card__sub">
+              <code>⌊{planDirecto.toLocaleString('es-CL')} × 0,90⌋</code>
+            </span>
           </div>
-
           <SegmentedBar
             valuePct={globalCumplimientoPct}
             targetPct={90}
             variant={globalCumplimientoPct < 90 ? 'alert' : 'default'}
-            caption={`Ejecución real SIC (${globalCumplimientoPct.toLocaleString('es-CL')}%) frente al umbral del 90% (segmento 9 marcado)`}
           />
-
-          <p className="kpi-card__note">
-            <strong>Fórmula oficial (Duda 3):</strong>{' '}
-            <code>MG_Dir_M = ⌊Plan_Dir_M × 0,90⌋</code> (truncamiento doble al piso sobre{' '}
-            <span className="tabular-nums">{planDirecto.toLocaleString('es-CL')}</span> atenciones planificadas).
-          </p>
         </article>
 
-        {/* Card 3: Plan Asistencial Mensual */}
-        <article className="kpi-card" aria-labelledby="kpi-title-plan">
-          <div className="kpi-card__top">
-            <span className="micro-label">KPI 03 · CAPACIDAD PROYECTADA</span>
-            <span className="status-badge status-badge--cumplido">
-              <PixelCheckIcon size={14} />
-              <span>100% Trazable</span>
+        {/* KPI 03: Plan Total */}
+        <article className="m3-kpi-card" aria-labelledby="kpi-plan-title">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label" id="kpi-plan-title">
+              Plan Total Proyectado
+            </span>
+            <span className="m3-badge m3-badge--neutral">
+              {totalProf.toLocaleString('es-CL')} prof.
             </span>
           </div>
-
-          <h3 id="kpi-title-plan" className="kpi-card__title">
-            Plan Asistencial Total Proyectado
-          </h3>
-
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums">
+          <div className="m3-kpi-card__body">
+            <p className="m3-kpi-card__metric tabular-nums">
               {planTotal.toLocaleString('es-CL')}
             </p>
-            <span className="kpi-card__unit">atenciones totales (Dir + Ind)</span>
-          </div>
-
-          <dl className="kpi-breakdown tabular-nums">
-            <div className="kpi-breakdown__item">
-              <dt>Atenciones Directas (box/paciente)</dt>
-              <dd>{planDirecto.toLocaleString('es-CL')}</dd>
-            </div>
-            <div className="kpi-breakdown__item">
-              <dt>Atenciones Indirectas (informes/familia)</dt>
-              <dd>{planIndirecto.toLocaleString('es-CL')}</dd>
-            </div>
-            <div className="kpi-breakdown__item">
-              <dt>Dotación / Contratos evaluados</dt>
-              <dd>
-                {totalProf.toLocaleString('es-CL')} prof. · {totalContratos.toLocaleString('es-CL')} ctos.
-              </dd>
-            </div>
-          </dl>
-
-          <p className="kpi-card__note">
-            <strong>Regla de vigencia:</strong> cambios de jornada (Ley 42h desde mayo 2026) recalculan hacia adelante sin alterar meses cerrados.
-          </p>
-        </article>
-
-        {/* Card 4: Horas Semanales Dir / Ind / NAS */}
-        <article className="kpi-card" aria-labelledby="kpi-title-horas">
-          <div className="kpi-card__top">
-            <span className="micro-label">KPI 04 · DISTRIBUCIÓN DE JORNADA</span>
-            <span className="status-badge status-badge--teal">
-              <PixelCheckIcon size={14} />
-              <span>Dir + Ind + NAS = 100%</span>
+            <span className="m3-kpi-card__sub tabular-nums">
+              Dir {planDirecto.toLocaleString('es-CL')} · Ind {planIndirecto.toLocaleString('es-CL')}
             </span>
           </div>
+          <div className="m3-kpi-card__chip-row tabular-nums">
+            <span className="m3-metric-chip">Directas: {planDirecto.toLocaleString('es-CL')}</span>
+            <span className="m3-metric-chip">Indirectas: {planIndirecto.toLocaleString('es-CL')}</span>
+          </div>
+        </article>
 
-          <h3 id="kpi-title-horas" className="kpi-card__title">
-            Horas Semanales Contratadas y Distribución
-          </h3>
-
-          <div className="kpi-card__value-row">
-            <p className="kpi-card__value tabular-nums">
+        {/* KPI 04: Jornada Semanal */}
+        <article className="m3-kpi-card" aria-labelledby="kpi-jornada-title">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label" id="kpi-jornada-title">
+              Jornada Semanal Red
+            </span>
+            <span className="m3-badge m3-badge--teal">100%</span>
+          </div>
+          <div className="m3-kpi-card__body">
+            <p className="m3-kpi-card__metric tabular-nums">
               {hCont.toLocaleString('es-CL', { maximumFractionDigits: 1 })} h
             </p>
-            <span className="kpi-card__unit">semanales contratadas en red</span>
+            <span className="m3-kpi-card__sub tabular-nums">
+              Dir {hDir.toLocaleString('es-CL', { maximumFractionDigits: 0 })}h · Ind {hInd.toLocaleString('es-CL', { maximumFractionDigits: 0 })}h
+            </span>
           </div>
-
           <StackedHoursBar pctDir={pctDir} pctInd={pctInd} pctNas={pctNas} />
-
-          <dl className="kpi-breakdown kpi-breakdown--3col tabular-nums">
-            <div className="kpi-breakdown__item">
-              <dt>Directas</dt>
-              <dd>{hDir.toLocaleString('es-CL', { maximumFractionDigits: 1 })} h</dd>
-            </div>
-            <div className="kpi-breakdown__item">
-              <dt>Indirectas</dt>
-              <dd>{hInd.toLocaleString('es-CL', { maximumFractionDigits: 1 })} h</dd>
-            </div>
-            <div className="kpi-breakdown__item">
-              <dt>No Asist. (NAS)</dt>
-              <dd>{hNas.toLocaleString('es-CL', { maximumFractionDigits: 1 })} h</dd>
-            </div>
-          </dl>
         </article>
       </section>
 
-      {/* Tabla Resumen por Especialidad con semáforo accesible WCAG */}
+      {/* 2. Canvas Principal: Hoja de Datos Asistencial M3 (>80% del Viewport) */}
       <section
-        aria-labelledby="resumen-esp-heading"
-        className="panel-section"
+        aria-labelledby="resumen-sheet-heading"
+        className="m3-sheet-card"
       >
-        <div className="panel-section__header">
-          <div>
-            <h3 id="resumen-esp-heading" className="panel-section__title">
-              Estado de Cumplimiento por Especialidad (Plan Directo vs. Real SIC)
+        <div className="m3-sheet-card__toolbar">
+          <div className="m3-sheet-card__title-box">
+            <PixelExcelIcon size={16} />
+            <h3 id="resumen-sheet-heading" className="m3-sheet-card__title">
+              Planilla Asistencial: Plan Directo vs. Real SIC
             </h3>
-            <p className="panel-section__desc">
-              Doble codificación accesible WCAG 2.1 AA: cada estado combina icono geométrico + etiqueta textual explícita + contraste verificado ≥4.5:1.
-            </p>
+            <span className="m3-badge m3-badge--neutral">
+              {planVsReal.length} registros
+            </span>
           </div>
-          {onSelectTab && (
-            <button
-              type="button"
-              className="btn-pixel btn-pixel--primary"
-              onClick={() => onSelectTab('plan-vs-real')}
-            >
-              Explorar matriz Plan vs Real completa →
-            </button>
-          )}
+
+          <div className="m3-sheet-card__actions">
+            <span className="m3-chip m3-chip--success" title="Dotación activa de profesionales">
+              <PixelCheckIcon size={12} />
+              <strong className="tabular-nums">{totalProf.toLocaleString('es-CL')}</strong> prof. ({totalContratos.toLocaleString('es-CL')} ctos.)
+            </span>
+
+            {criticosCount > 0 && (
+              <span className="m3-chip m3-chip--error" title="Especialidades por debajo de la Meta de Gestión 90%">
+                <PixelAlertIcon size={12} />
+                <strong className="tabular-nums">{criticosCount}</strong> bajo MG 90%
+              </span>
+            )}
+
+            {onSelectTab && (
+              <button
+                type="button"
+                className="m3-btn m3-btn--primary m3-btn--sm"
+                onClick={() => onSelectTab('plan-vs-real')}
+              >
+                Matriz Completa →
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="table-responsive" role="region" aria-labelledby="resumen-esp-heading" tabIndex="0">
-          <table className="pixel-table">
+        {/* Tabla Densificada con Cabecera Sticky y Scroll Interno */}
+        <div
+          className="m3-table-viewport"
+          role="region"
+          aria-labelledby="resumen-sheet-heading"
+          tabIndex="0"
+        >
+          <table className="m3-data-table">
             <caption className="sr-only">
-              Tabla de cumplimiento asistencial por especialidad clínica comparando Plan Directo, Meta de Gestión 90% y Atenciones Reales SIC
+              Tabla de cumplimiento asistencial comparando Plan Directo, Meta de Gestión 90% y Atenciones Reales SIC
             </caption>
             <thead>
               <tr>
-                <th scope="col">Especialidad (SIC)</th>
-                <th scope="col" className="num-col">Plan Directo</th>
-                <th scope="col" className="num-col">Meta Gestión (90%)</th>
-                <th scope="col" className="num-col">Real Ejecutado (SIC)</th>
-                <th scope="col" className="num-col">% Cumplimiento</th>
-                <th scope="col">Estado Asistencial (WCAG)</th>
-                <th scope="col">Acción Rápida</th>
+                <th scope="col" className="m3-col-rowidx">#</th>
+                <th scope="col">Especialidad</th>
+                <th scope="col" className="m3-col-num">Plan Directo</th>
+                <th scope="col" className="m3-col-num">Meta (90%)</th>
+                <th scope="col" className="m3-col-num">Real (SIC)</th>
+                <th scope="col" className="m3-col-num">% Cumpl.</th>
+                <th scope="col">Estado WCAG</th>
+                <th scope="col">Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -284,24 +220,27 @@ export default function ResumenView({
                 return (
                   <tr
                     key={`${row.cod_esp}-${row.it || idx}`}
-                    className={row.alerta?.nivel === 'CRITICO' ? 'row-critico' : ''}
+                    className={row.alerta?.nivel === 'CRITICO' ? 'm3-row--error' : ''}
                   >
-                    <th scope="row" className="esp-cell">
-                      <span className="esp-name">{row.cod_esp}</span>
+                    <td className="m3-col-rowidx tabular-nums" aria-hidden="true">
+                      {idx + 1}
+                    </td>
+                    <th scope="row" className="m3-cell-title">
+                      <span className="m3-text-primary">{row.cod_esp}</span>
                       {row.sigla && row.sigla !== 'NAC' && (
-                        <span className="esp-sub"> · Sede {row.sigla}</span>
+                        <span className="m3-text-muted"> · {row.sigla}</span>
                       )}
                     </th>
-                    <td className="num-col tabular-nums">
+                    <td className="m3-col-num tabular-nums">
                       {Number(row.plan_directo).toLocaleString('es-CL')}
                     </td>
-                    <td className="num-col tabular-nums">
+                    <td className="m3-col-num tabular-nums">
                       {Number(row.meta_gestion).toLocaleString('es-CL')}
                     </td>
-                    <td className="num-col tabular-nums font-bold">
+                    <td className="m3-col-num tabular-nums font-bold">
                       {Number(row.real_directo).toLocaleString('es-CL')}
                     </td>
-                    <td className="num-col tabular-nums">
+                    <td className="m3-col-num tabular-nums">
                       <strong>{Number(row.cumplimiento_pct).toLocaleString('es-CL')}%</strong>
                     </td>
                     <td>
@@ -314,13 +253,13 @@ export default function ResumenView({
                       {onChangeFilter && (
                         <button
                           type="button"
-                          className="btn-pixel btn-pixel--ghost btn-pixel--sm"
+                          className="m3-btn m3-btn--tonal m3-btn--xs"
                           onClick={() =>
                             onChangeFilter('esp', isSelectedEsp ? '' : row.cod_esp)
                           }
                           aria-pressed={isSelectedEsp}
                         >
-                          {isSelectedEsp ? 'Quitar filtro' : `Filtrar ${row.cod_esp}`}
+                          {isSelectedEsp ? 'Quitar' : `Filtrar ${row.cod_esp}`}
                         </button>
                       )}
                     </td>

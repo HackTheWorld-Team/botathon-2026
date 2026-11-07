@@ -143,4 +143,18 @@
 
 ---
 
-*(Nuevas decisiones se agregan como ADR-018, ADR-019… con fecha y quién decidió.)*
+## ADR-018 — Arquitectura visual Material You (M3) de Alta Densidad (Issue #49)
+
+- **Contexto:** las pantallas de notebooks y monitores clínicos requieren visualizar simultáneamente grandes volúmenes de datos asistenciales (profesionales, jornadas, planes, semáforos) sin scrolling vertical excesivo ni desperdicio de espacio horizontal por barras laterales gruesas.
+- **Decisión:** migrar el diseño a **Material You (Material Design 3)** con densidad optimizada (*High Density Layout*):
+  1. **Roles semánticos M3:** derivar roles `--md-sys-color-*` preservando íntegramente la paleta clínica existente (`#0a6b63`, `#1ecebd`, `#8fe7de`, `#121313`, `#c62828`, `#9a6700`), cumpliendo 100% WCAG 2.1 AA (`npm run check:contrast`).
+  2. **Navigation Rail compacto (68px):** sustituir sidebar de ancho fijo (256px) por mini-sidebar lateral con indicadores píldora activos (`rounded-full`, 32px × 52px), liberando casi 200px horizontales para las tablas.
+  3. **KPI Strip horizontal superior (~84px):** tarjetas de métricas en 4 columnas compactas horizontales (`m3-kpi-card`) con micro-barras y tipografía escalada sin alturas redundantes.
+  4. **Filter Strip horizontal compacto:** píldoras M3 de 28px (`h-7`/`h-8`) con selector multinivel y quick-actions (`Mayo 2026 42h`, reset `Esc`).
+  5. **Lienzo de datos dominante (>80% superficie):** planilla asistencial interactiva estilo hoja de cálculo (`m3-sheet-card`) con cabeceras `sticky`, numeración de filas `#` y scroll interno independiente.
+- **Consecuencias:** visualización homogénea y ultra-compacta en notebooks (1366×768 / 1280×800) y monitores de alta resolución; navegación accesible por teclado e inmediata; cero sombras difusas pesadas (sustituidas por bordes tonales de 1px).
+- **Decidió:** Líder (Axel-DaMage) asistido por Antigravity — 07-nov 07:58.
+
+---
+
+*(Nuevas decisiones se agregan como ADR-019, ADR-020… con fecha y quién decidió.)*

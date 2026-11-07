@@ -3,12 +3,12 @@ import { PixelFilterIcon, PixelResetIcon } from './PixelIcons.jsx'
 import { PERIODO_LABELS } from '../api.js'
 
 /**
- * GlobalFilters.jsx — Barra de filtros multinivel persistente y teclado-first (Issue #25, UI_SPEC.md §5)
+ * GlobalFilters.jsx — High-Density Material 3 (M3) Horizontal Filter Strip
  *
- * Jerarquía: Nacional -> Instituto (IT) -> Área -> Cargo -> Especialidad -> Mes/Período
- * - <label> explícito y visible en cada <select>
- * - Tecla Escape sobre cualquier filtro restablece a vista Nacional
- * - Chips activos con doble codificación (etiqueta + valor + botón quitar)
+ * Características M3 High Density:
+ * - Altura compacta (h-8 / 32px), formato píldora (rounded-full) y elevación plana con outline-variant
+ * - Distribución horizontal fluida que no roba espacio vertical al lienzo de datos
+ * - Accesible 100% por teclado con atajo Escape para resetear a nivel nacional
  */
 export default function GlobalFilters({
   filters,
@@ -37,102 +37,84 @@ export default function GlobalFilters({
 
   const selectedInstObj = institutos.find((i) => String(i.it) === String(filters.instituto))
   const scopeLabel = selectedInstObj
-    ? `IT ${selectedInstObj.it} · ${selectedInstObj.sigla} (${selectedInstObj.nombre})`
-    : 'Red Nacional Teletón (16 Institutos)'
+    ? `IT ${selectedInstObj.it} · ${selectedInstObj.sigla}`
+    : 'Red Nacional (16 Sedes)'
 
   return (
     <section
-      aria-label="Filtros globales multinivel"
-      className="global-filters"
+      aria-label="Filtros globales y alcance de datos"
+      className="m3-filter-strip"
       onKeyDown={handleKeyDown}
     >
-      <div className="global-filters__header">
-        <div className="global-filters__scope">
-          <PixelFilterIcon size={16} />
-          <span className="global-filters__scope-title">Alcance activo:</span>
-          <strong className="global-filters__scope-value">{scopeLabel}</strong>
-          {filters.mes && (
-            <span className="scope-pill">
-              Período: <strong>{PERIODO_LABELS[filters.mes] || filters.mes}</strong>
-            </span>
-          )}
-          {filters.area && (
-            <span className="scope-pill">
-              Área: <strong>{filters.area}</strong>
-            </span>
-          )}
-          {filters.cargo && (
-            <span className="scope-pill">
-              Cargo: <strong>{filters.cargo}</strong>
-            </span>
-          )}
-          {filters.esp && (
-            <span className="scope-pill">
-              Especialidad: <strong>{filters.esp}</strong>
-            </span>
-          )}
-        </div>
+      <div className="m3-filter-strip__inner">
+        {/* Alcance Activo & Quick Actions */}
+        <div className="m3-filter-strip__scope-group">
+          <span className="m3-chip m3-chip--assist" title="Alcance institucional activo">
+            <PixelFilterIcon size={13} />
+            <strong className="tabular-nums">{scopeLabel}</strong>
+          </span>
 
-        <div className="global-filters__quick">
           <button
             type="button"
-            className="btn-pixel btn-pixel--ghost btn-pixel--sm"
-            onClick={() => onChangeFilter('mes', '2026-05-01')}
+            className={`m3-chip m3-chip--filter ${filters.mes === '2026-05-01' ? 'm3-chip--selected' : ''}`}
+            onClick={() => onChangeFilter('mes', filters.mes === '2026-05-01' ? '' : '2026-05-01')}
             aria-pressed={filters.mes === '2026-05-01'}
           >
-            Hito Mayo 2026 (42h)
+            <span>Mayo 2026 (42h)</span>
           </button>
-          <button
-            type="button"
-            className="btn-pixel btn-pixel--secondary btn-pixel--sm"
-            onClick={onResetFilters}
-            disabled={!hasActiveFilters}
-            aria-label="Restablecer todos los filtros a vista Nacional (Atajo: tecla Escape)"
-          >
-            <PixelResetIcon size={14} />
-            <span>Restablecer a Nacional (Esc)</span>
-          </button>
-        </div>
-      </div>
 
-      <form
-        className="global-filters__grid"
-        onSubmit={(e) => e.preventDefault()}
-        aria-label="Selectores de filtro asistencial"
-      >
-        <div className="filter-field">
-          <label htmlFor="f-instituto" className="filter-label">
-            1. Instituto (IT / Sede)
-          </label>
-          <div className="select-pixel-wrap">
+          {hasActiveFilters && (
+            <button
+              type="button"
+              className="m3-chip m3-chip--filter m3-chip--reset"
+              onClick={onResetFilters}
+              aria-label="Restablecer todos los filtros (Esc)"
+              title="Restablecer filtros a nivel nacional (Atajo: Escape)"
+            >
+              <PixelResetIcon size={12} />
+              <span>Limpiar (Esc)</span>
+            </button>
+          )}
+        </div>
+
+        {/* Formulario Horizontal con Selects Píldora M3 */}
+        <form
+          className="m3-filter-strip__selects"
+          onSubmit={(e) => e.preventDefault()}
+          aria-label="Selectores de filtrado asistencial"
+        >
+          <div className="m3-select-pill">
+            <label htmlFor="f-instituto" className="sr-only">
+              Instituto
+            </label>
             <select
               id="f-instituto"
               name="instituto"
               value={filters.instituto || ''}
               onChange={(e) => onChangeFilter('instituto', e.target.value)}
+              title="Filtrar por Instituto"
             >
-              <option value="">Nacional — Todos los Institutos (16)</option>
+              <option value="">Sede: Todas (16)</option>
               {institutos.map((inst) => (
                 <option key={inst.it} value={String(inst.it)}>
-                  IT {inst.it} · {inst.sigla} — {inst.nombre}
+                  IT {inst.it} · {inst.sigla} ({inst.nombre})
                 </option>
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="filter-field">
-          <label htmlFor="f-mes" className="filter-label">
-            2. Mes / Período 2026
-          </label>
-          <div className="select-pixel-wrap">
+          <div className="m3-select-pill">
+            <label htmlFor="f-mes" className="sr-only">
+              Período
+            </label>
             <select
               id="f-mes"
               name="mes"
               value={filters.mes || ''}
               onChange={(e) => onChangeFilter('mes', e.target.value)}
+              title="Filtrar por Mes / Período"
             >
-              <option value="">Anual consolidado (Ene–Dic 2026)</option>
+              <option value="">Mes: Anual 2026</option>
               {periodos.map((per) => (
                 <option key={per} value={per}>
                   {PERIODO_LABELS[per] || per}
@@ -140,20 +122,19 @@ export default function GlobalFilters({
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="filter-field">
-          <label htmlFor="f-area" className="filter-label">
-            3. Área Clínica
-          </label>
-          <div className="select-pixel-wrap">
+          <div className="m3-select-pill">
+            <label htmlFor="f-area" className="sr-only">
+              Área Clínica
+            </label>
             <select
               id="f-area"
               name="area"
               value={filters.area || ''}
               onChange={(e) => onChangeFilter('area', e.target.value)}
+              title="Filtrar por Área Clínica"
             >
-              <option value="">Todas las áreas clínicas</option>
+              <option value="">Área: Todas</option>
               {areas.map((area) => (
                 <option key={area} value={area}>
                   {area}
@@ -161,20 +142,19 @@ export default function GlobalFilters({
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="filter-field">
-          <label htmlFor="f-cargo" className="filter-label">
-            4. Cargo Contractual
-          </label>
-          <div className="select-pixel-wrap">
+          <div className="m3-select-pill">
+            <label htmlFor="f-cargo" className="sr-only">
+              Cargo
+            </label>
             <select
               id="f-cargo"
               name="cargo"
               value={filters.cargo || ''}
               onChange={(e) => onChangeFilter('cargo', e.target.value)}
+              title="Filtrar por Cargo"
             >
-              <option value="">Todos los cargos</option>
+              <option value="">Cargo: Todos</option>
               {cargos.map((cargo) => (
                 <option key={cargo} value={cargo}>
                   {cargo}
@@ -182,20 +162,19 @@ export default function GlobalFilters({
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="filter-field">
-          <label htmlFor="f-esp" className="filter-label">
-            5. Especialidad (SIC)
-          </label>
-          <div className="select-pixel-wrap">
+          <div className="m3-select-pill">
+            <label htmlFor="f-esp" className="sr-only">
+              Especialidad
+            </label>
             <select
               id="f-esp"
               name="esp"
               value={filters.esp || ''}
               onChange={(e) => onChangeFilter('esp', e.target.value)}
+              title="Filtrar por Especialidad SIC"
             >
-              <option value="">Todas las especialidades</option>
+              <option value="">Esp: Todas</option>
               {especialidades.map((esp) => (
                 <option key={esp} value={esp}>
                   {esp}
@@ -203,8 +182,8 @@ export default function GlobalFilters({
               ))}
             </select>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </section>
   )
 }

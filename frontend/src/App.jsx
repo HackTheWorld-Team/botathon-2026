@@ -18,6 +18,7 @@ import {
   buildMockPlanVsReal,
   PERIODO_LABELS,
 } from './api.js'
+import { BrandStackIcons, TabSimpleIcon } from './components/PixelIcons.jsx'
 import BotStatusBar from './components/BotStatusBar.jsx'
 import GlobalFilters from './components/GlobalFilters.jsx'
 import ResumenView from './views/ResumenView.jsx'
@@ -27,18 +28,14 @@ import PlanVsRealView from './views/PlanVsRealView.jsx'
 import LotesView from './views/LotesView.jsx'
 
 /**
- * App.jsx — Shell One-Page Accesible WCAG 2.1 AA (Issues #46, #24, #25)
+ * App.jsx — Material You (M3) High-Density Dashboard Shell
  *
- * Cumple UI_SPEC.md §5:
- * 1. Parseo determinista del hash ANTES del primer render (#/<tab>?instituto=&mes=&cargo=&esp=&area=)
- * 2. Header con marca Teletón + WAI-ARIA Tabs (role="tablist/tab/tabpanel", flechas <-/->, Home/End)
- * 3. Statusbar del bot Blue Prism SIEMPRE visible
- * 4. Barra de filtros globales teclado-first SIEMPRE visible
- * 5. Gestión de foco al cambiar de pestaña (foco al <h2 tabIndex="-1"> del panel activo)
- * 6. Live regions polite/assertive para lector de pantalla
+ * Características:
+ * 1. Top App Bar delgada (44px) con marca a la izquierda y Assist Chips de RPA a la derecha
+ * 2. M3 Navigation Rail lateral compacto (68px) con píldora activa rounded-full, liberando >200px para datos
+ * 3. Lienzo principal de alta densidad con Filtros Globales horizontales compactos y scroll interno
  */
 export default function App() {
-  // Parsear hash ANTES del primer render (UI_SPEC.md §5)
   const initialRouteRef = useRef(null)
   if (!initialRouteRef.current) {
     initialRouteRef.current = parseHash(
@@ -60,7 +57,6 @@ export default function App() {
 
   const tabRefs = useRef({})
 
-  // Normalizar URL inicial si estaba vacía o inválida (silencioso con replaceState)
   useEffect(() => {
     replaceFiltersHash(activeTab, filters)
     const meta = TAB_META[activeTab] || TAB_META.resumen
@@ -69,7 +65,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Escuchar navegación del historial (Atrás / Adelante / cambio manual de hash)
   useEffect(() => {
     function handlePopState() {
       const parsed = parseHash(window.location.hash)
@@ -87,7 +82,6 @@ export default function App() {
     }
   }, [])
 
-  // Cargar catálogos y lotes al montar
   useEffect(() => {
     let active = true
     fetchFiltros().then((res) => {
@@ -101,10 +95,8 @@ export default function App() {
     }
   }, [])
 
-  // Recalcular / consultar KPIs y Plan vs Real cada vez que cambian los filtros
   useEffect(() => {
     let active = true
-    // Actualización inmediata con cálculo determinista para respuesta instantánea
     setKpis(buildMockKpis(filters))
     setPlanVsReal(buildMockPlanVsReal(filters))
 
@@ -178,9 +170,9 @@ export default function App() {
 
   function handleTabKeyDown(e, index) {
     let targetIndex = null
-    if (e.key === 'ArrowRight') {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
       targetIndex = (index + 1) % VALID_TABS.length
-    } else if (e.key === 'ArrowLeft') {
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
       targetIndex = (index - 1 + VALID_TABS.length) % VALID_TABS.length
     } else if (e.key === 'Home') {
       targetIndex = 0
@@ -196,7 +188,7 @@ export default function App() {
       const btn = tabRefs.current[nextTab]
       if (btn) btn.focus()
       const meta = TAB_META[nextTab]
-      setLiveMessage(`Pestaña seleccionada: ${meta.label}. Presione Enter o Tab para ir al panel.`)
+      setLiveMessage(`Pestaña seleccionada: ${meta.label}. Presione Enter para ir al panel.`)
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       focusPanelHeading(VALID_TABS[index])
@@ -206,13 +198,11 @@ export default function App() {
   const latestLote = lotes[0] || MOCK_LOTES[0]
 
   return (
-    <div className="app-shell">
-      {/* 1. Skip Link — Primero en orden de tabulación (UI_SPEC.md §5) */}
+    <div className="m3-app-shell">
       <a className="skip-link" href="#contenido-principal">
         Saltar al contenido principal
       </a>
 
-      {/* Live regions accesibles para lectores de pantalla (NVDA / JAWS / Orca) */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {liveMessage}
       </div>
@@ -220,28 +210,34 @@ export default function App() {
         {alertMessage}
       </div>
 
-      {/* 2. Header Persistente: Marca + Navegación WAI-ARIA Tabs */}
-      <header className="app-header" role="banner">
-        <div className="app-header__top">
-          <div className="brand-block">
-            <span className="brand-tag" aria-hidden="true">
-              BOTATHON 2026 · RPA + ANALÍTICA
-            </span>
-            <h1 className="brand-title">
-              Teletón — Planificación y Control de Gestión Asistencial 2026
-            </h1>
-          </div>
+      {/* 1. Top App Bar Delgada M3 (44px) */}
+      <header className="m3-top-app-bar" role="banner">
+        <h1 className="sr-only">
+          Teletón · Planificación Asistencial 2026
+        </h1>
 
-          <div className="header-meta">
-            <span className="header-meta__badge">
-              Datos Ficticios Anonimizados · WCAG 2.1 AA
-            </span>
-          </div>
+        <div className="m3-top-app-bar__start">
+          <span className="m3-brand-badge">BOTATHON 2026</span>
+          <BrandStackIcons size={13} />
+          <span className="m3-badge m3-badge--neutral">WCAG 2.1 AA</span>
         </div>
 
-        {/* Patrón WAI-ARIA Tabs (role="tablist/tab") */}
-        <nav aria-label="Vistas principales del sistema" className="tabs-nav">
-          <div role="tablist" aria-label="Secciones del dashboard asistencial" className="tablist">
+        <div className="m3-top-app-bar__end">
+          <BotStatusBar
+            latestLote={latestLote}
+            onSelectTab={(t) => handleSelectTab(t, true)}
+          />
+        </div>
+      </header>
+
+      {/* 2. Layout Principal: Navigation Rail (68px) + Main Canvas */}
+      <div className="m3-workspace-layout">
+        {/* Navigation Rail M3 Lateral */}
+        <nav
+          className="m3-nav-rail"
+          aria-label="Navegación principal del dashboard"
+        >
+          <div role="tablist" aria-label="Secciones del dashboard asistencial" className="m3-nav-rail__list">
             {VALID_TABS.map((tabId, index) => {
               const meta = TAB_META[tabId]
               const isSelected = activeTab === tabId
@@ -258,91 +254,83 @@ export default function App() {
                   aria-controls={`panel-${tabId}`}
                   aria-current={isSelected ? 'page' : undefined}
                   tabIndex={isSelected ? 0 : -1}
-                  className={`tab-btn ${isSelected ? 'tab-btn--active' : ''}`}
+                  className={`m3-nav-rail__item ${isSelected ? 'm3-nav-rail__item--active' : ''}`}
                   onClick={() => handleSelectTab(tabId, true)}
                   onKeyDown={(e) => handleTabKeyDown(e, index)}
+                  title={meta.title}
                 >
-                  <span className="tab-btn__index" aria-hidden="true">
-                    0{index + 1}
+                  <span className="m3-nav-rail__indicator">
+                    <TabSimpleIcon tabId={tabId} size={18} />
                   </span>
-                  <span className="tab-btn__label">{meta.label}</span>
+                  <span className="m3-nav-rail__label">{meta.label}</span>
                 </button>
               )
             })}
           </div>
         </nav>
-      </header>
 
-      {/* 3. Statusbar del Bot Blue Prism SIEMPRE visible */}
-      <BotStatusBar
-        latestLote={latestLote}
-        onSelectTab={(t) => handleSelectTab(t, true)}
-      />
+        {/* Lienzo Principal de Alta Densidad */}
+        <div className="m3-main-container">
+          {/* Franja de Filtros Globales Horizontales */}
+          <GlobalFilters
+            filters={filters}
+            catalogs={catalogs}
+            onChangeFilter={handleChangeFilter}
+            onResetFilters={handleResetFilters}
+          />
 
-      {/* 4. Filtros Globales Multinivel SIEMPRE visibles */}
-      <GlobalFilters
-        filters={filters}
-        catalogs={catalogs}
-        onChangeFilter={handleChangeFilter}
-        onResetFilters={handleResetFilters}
-      />
+          {/* Área de Visualización Activa con Scroll Interno */}
+          <main id="contenido-principal" role="main" className="m3-main-canvas">
+            <div
+              key={activeTab}
+              id={`panel-${activeTab}`}
+              role="tabpanel"
+              aria-labelledby={`tab-${activeTab}`}
+              className="m3-tabpanel-container view-animate-in"
+            >
+              {activeTab === 'resumen' && (
+                <ResumenView
+                  kpis={kpis}
+                  planVsReal={planVsReal}
+                  filters={filters}
+                  onChangeFilter={handleChangeFilter}
+                  onSelectTab={(t) => handleSelectTab(t, true)}
+                />
+              )}
 
-      {/* 5. Panel Activo (role="tabpanel") */}
-      <main id="contenido-principal" role="main" className="app-main">
-        <div
-          id={`panel-${activeTab}`}
-          role="tabpanel"
-          aria-labelledby={`tab-${activeTab}`}
-          className="tabpanel-box"
-        >
-          {activeTab === 'resumen' && (
-            <ResumenView
-              kpis={kpis}
-              planVsReal={planVsReal}
-              filters={filters}
-              onChangeFilter={handleChangeFilter}
-              onSelectTab={(t) => handleSelectTab(t, true)}
-            />
-          )}
+              {activeTab === 'antes-despues' && (
+                <AntesDespuesView
+                  filters={filters}
+                  onChangeFilter={handleChangeFilter}
+                />
+              )}
 
-          {activeTab === 'antes-despues' && (
-            <AntesDespuesView
-              filters={filters}
-              onChangeFilter={handleChangeFilter}
-            />
-          )}
+              {activeTab === 'parametros' && (
+                <ParametrosView
+                  onAnnounce={(msg) => {
+                    setLiveMessage(msg)
+                    setAlertMessage('')
+                  }}
+                />
+              )}
 
-          {activeTab === 'parametros' && (
-            <ParametrosView
-              onAnnounce={(msg) => {
-                setLiveMessage(msg)
-                setAlertMessage('')
-              }}
-            />
-          )}
+              {activeTab === 'plan-vs-real' && (
+                <PlanVsRealView
+                  planVsReal={planVsReal}
+                  filters={filters}
+                  onChangeFilter={handleChangeFilter}
+                />
+              )}
 
-          {activeTab === 'plan-vs-real' && (
-            <PlanVsRealView
-              planVsReal={planVsReal}
-              filters={filters}
-              onChangeFilter={handleChangeFilter}
-            />
-          )}
-
-          {activeTab === 'lotes' && <LotesView lotes={lotes} />}
+              {activeTab === 'lotes' && <LotesView lotes={lotes} />}
+            </div>
+          </main>
         </div>
-      </main>
+      </div>
 
-      {/* 6. Footer Semántico */}
-      <footer className="app-footer" role="contentinfo">
-        <div className="app-footer__inner">
-          <p>
-            <strong>Botathon 2026 Teletón — &ldquo;Cada hora cuenta&rdquo;</strong> · Solución híbrida Blue Prism RPA + Motor Python determinista + Dashboard React WCAG 2.1 AA.
-          </p>
-          <p className="app-footer__sub">
-            Datos exclusivamente sintéticos/anonimizados (Ley 19.628). Contraste programático verificado ≥4.5:1.
-          </p>
-        </div>
+      {/* 3. Footer Minimalista */}
+      <footer className="m3-footer" role="contentinfo">
+        <span>Teletón · Botathon 2026 · Material You High-Density</span>
       </footer>
     </div>
   )

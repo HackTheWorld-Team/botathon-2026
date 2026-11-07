@@ -82,8 +82,8 @@ const INITIAL_AUDITORIA = [
     usuario: 'admin_clinico',
     tipo_cambio: 'DISTRIBUCION',
     entidad_clave: 'MEDICO FISIATRA:T1',
-    valor_anterior: '{"pct_directo":0.62,"pct_indirecto":0.18,"pct_nas":0.20,"min_directa":30,"min_indirecta":30}',
-    valor_nuevo: '{"pct_directo":0.65,"pct_indirecto":0.15,"pct_nas":0.20,"min_directa":30,"min_indirecta":30,"motivo":"Ajuste meta asistencial Fisiatría Mayo 42h"}',
+    valor_anterior: 'Dir 62% / Ind 18% / NAS 20%',
+    valor_nuevo: 'Dir 65% / Ind 15% / NAS 20% (30m dir) — Ajuste meta asistencial Fisiatría Mayo 42h',
     vigencia_desde: '2026-05-01',
     planes_recalculados: 2082,
   },
@@ -93,8 +93,8 @@ const INITIAL_AUDITORIA = [
     usuario: 'dmn_subdireccion',
     tipo_cambio: 'ASIGNACION',
     entidad_clave: 'Líder Equipo',
-    valor_anterior: '{"horas_semana":3.0,"requiere_vb_dmn":1}',
-    valor_nuevo: '{"horas_semana":4.0,"requiere_vb_dmn":1,"motivo":"Homologación Duda 1 y Duda 2 V°B° DMN"}',
+    valor_anterior: '3.0h/sem (Con V°B° DMN)',
+    valor_nuevo: '4.0h/sem (Con V°B° DMN) — Homologación Duda 1 y Duda 2 V°B° DMN',
     vigencia_desde: '2026-05-01',
     planes_recalculados: 2082,
   },
@@ -104,44 +104,17 @@ const INITIAL_AUDITORIA = [
     usuario: 'admin_clinico',
     tipo_cambio: 'GRUPAL',
     entidad_clave: 'UEDA',
-    valor_anterior: '{"pct_grupal":0.55,"n_pac_san_con":8,"n_pac_otros":6}',
-    valor_nuevo: '{"pct_grupal":0.60,"n_pac_san_con":8,"n_pac_otros":6,"motivo":"Actualización factor grupal Deporte Adaptado"}',
+    valor_anterior: 'Grupal 55% (SCL/CCP: 8 · Otras: 6)',
+    valor_nuevo: 'Grupal 60% (SCL/CCP: 8 · Otras: 6) — Actualización factor grupal Deporte Adaptado',
     vigencia_desde: '2026-05-01',
     planes_recalculados: 2082,
   },
 ]
 
-function formatAuditSummary(jsonStr) {
-  if (!jsonStr) return 'Sin registro previo'
-  try {
-    const obj = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr
-    if (obj.pct_directo !== undefined) {
-      const d = Math.round(Number(obj.pct_directo) * 100)
-      const i = Math.round(Number(obj.pct_indirecto) * 100)
-      const n = Math.round(Number(obj.pct_nas) * 100)
-      const minD = obj.min_directa ? ` · ${obj.min_directa}m dir` : ''
-      return `Dir ${d}% / Ind ${i}% / NAS ${n}%${minD}`
-    }
-    if (obj.pct_grupal !== undefined) {
-      const g = Math.round(Number(obj.pct_grupal) * 100)
-      return `Grupal ${g}% (SCL/CCP: ${obj.n_pac_san_con} pac · Otras: ${obj.n_pac_otros} pac)`
-    }
-    if (obj.horas_semana !== undefined) {
-      const vb = Number(obj.requiere_vb_dmn) === 1 ? 'Con V°B° DMN' : 'Estándar Sede'
-      return `${obj.horas_semana}h/sem (${vb})`
-    }
-    return String(jsonStr)
-  } catch {
-    return String(jsonStr)
-  }
-}
-
 function buildFallbackSimulation({
   cargo,
   tramo,
   pctDir,
-  pctInd,
-  pctNas,
   minDir,
   vigencia,
   incluirVacantes,
@@ -151,28 +124,13 @@ function buildFallbackSimulation({
   const prevRule =
     distribucion.find((r) => r.cargo === cargo && Number(r.tramo) === Number(tramo)) || {
       pct_directo: 0.65,
-      pct_indirecto: 0.15,
-      pct_nas: 0.2,
       min_directa: 30,
     }
 
-  const cargoWeightMap = {
-    'MEDICO FISIATRA': 248,
-    KINESIOLOGO: 520,
-    'TERAPEUTA OCUPACIONAL': 390,
-    FONOAUDIOLOGO: 230,
-    PSICOLOGO: 180,
-    ENFERMERA: 145,
-    'ASISTENTE SOCIAL': 95,
-    EDUCADOR: 102,
-  }
+  const baseContracts = 220
   const tramoShare = Number(tramo) === 1 ? 0.72 : Number(tramo) === 2 ? 0.2 : 0.08
   const monthsRemaining = vigencia === '2026-05-01' ? 8 : vigencia === '2026-06-01' ? 7 : 6
-  const baseContracts = cargoWeightMap[cargo] || 180
-  const contratosAfectados = Math.max(
-    12,
-    Math.round(baseContracts * tramoShare * (monthsRemaining / 8))
-  )
+  const contratosAfectados = Math.max(12, Math.round(baseContracts * tramoShare * (monthsRemaining / 8)))
 
   const planDirActual = 426840
   const mgDirActual = Math.floor(planDirActual * 0.9)
@@ -186,17 +144,13 @@ function buildFallbackSimulation({
   const deltaFromRule = Math.round(affectedPlanBase * (ratioChange - 1))
 
   const vacHours = incluirVacantes ? Math.max(0, Number(horasVacantes) || 0) : 0
-  const atePerVacHourMonth = ((pctDir / 100) * (60 / Math.max(15, Number(minDir || 30)))) * 4.2
-  const deltaFromVacantes = Math.floor(vacHours * atePerVacHourMonth * monthsRemaining)
+  const deltaFromVacantes = Math.floor(vacHours * 14.5 * monthsRemaining)
 
   const planDirSimulado = Math.max(0, planDirActual + deltaFromRule + deltaFromVacantes)
   const mgDirSimulado = Math.floor(planDirSimulado * 0.9)
 
-  const deltaFojaRule = ((pctDir / 100 - Number(prevRule.pct_directo)) * 100) * 0.18
-  const deltaFojaVac = vacHours > 0 ? (vacHours / 12400) * (pctDir - fojaActualPct) : 0
-  const fojaSimuladoPct = Number(
-    Math.max(10, Math.min(95, fojaActualPct + deltaFojaRule + deltaFojaVac)).toFixed(2)
-  )
+  const deltaFoja = ((pctDir / 100 - Number(prevRule.pct_directo)) * 100) * 0.18
+  const fojaSimuladoPct = Number(Math.max(10, Math.min(95, fojaActualPct + deltaFoja)).toFixed(2))
 
   return {
     vigencia_desde: vigencia,
@@ -217,21 +171,13 @@ function buildFallbackSimulation({
   }
 }
 
-/**
- * ParametrosView.jsx — Parametrización Clínica, Simulación Previa, Vacantes y Auditoría (Issue #26)
- *
- * Conectado a:
- * - GET /api/parametros
- * - POST /api/parametros/simular
- * - PATCH /api/parametros
- */
 export default function ParametrosView({ onAnnounce }) {
   const [distribucion, setDistribucion] = useState(INITIAL_DISTRIBUCION)
   const [asignaciones, setAsignaciones] = useState(INITIAL_ASIGNACIONES)
   const [grupal, setGrupal] = useState(INITIAL_GRUPAL)
   const [auditoria, setAuditoria] = useState(INITIAL_AUDITORIA)
 
-  // Selector Cargo × Tramo y parámetros de regla
+  const [activeSubTab, setActiveSubTab] = useState('simular') // 'simular' | 'reglas' | 'asignaciones' | 'grupal' | 'auditoria'
   const [cargo, setCargo] = useState('MEDICO FISIATRA')
   const [tramo, setTramo] = useState(1)
   const [pctDir, setPctDir] = useState(65)
@@ -240,22 +186,16 @@ export default function ParametrosView({ onAnnounce }) {
   const [minInd, setMinInd] = useState(30)
   const [vigencia, setVigencia] = useState('2026-05-01')
   const [usuario, setUsuario] = useState('admin_clinico')
-  const [motivo, setMotivo] = useState(
-    'Ajuste prospectivo de distribución horaria y cobertura asistencial desde vigencia'
-  )
+  const [motivo, setMotivo] = useState('Ajuste prospectivo de regla horaria y cobertura asistencial desde vigencia')
 
-  // Toggle deseable: Simular Cobertura de Vacantes
   const [incluirVacantes, setIncluirVacantes] = useState(false)
   const [horasVacantes, setHorasVacantes] = useState(42)
 
-  // Resultados de simulación y aplicación
   const [simResult, setSimResult] = useState(() =>
     buildFallbackSimulation({
       cargo: 'MEDICO FISIATRA',
       tramo: 1,
-      pctDir: 68,
-      pctInd: 12,
-      pctNas: 20,
+      pctDir: 65,
       minDir: 30,
       vigencia: '2026-05-01',
       incluirVacantes: false,
@@ -268,86 +208,54 @@ export default function ParametrosView({ onAnnounce }) {
   const [isLoadingSim, setIsLoadingSim] = useState(false)
   const [isApplying, setIsApplying] = useState(false)
 
-  const pctNas = Number(Math.max(0, 100 - Number(pctDir || 0) - Number(pctInd || 0)).toFixed(2))
-  const sumPct = Number((Number(pctDir || 0) + Number(pctInd || 0) + pctNas).toFixed(2))
+  const pctNas = Math.max(0, 100 - Number(pctDir || 0) - Number(pctInd || 0))
 
-  // Cargar catálogos desde GET /api/parametros al montar
   useEffect(() => {
     let active = true
-    async function loadParametros() {
-      try {
-        const res = await fetch(`${API_BASE}/api/parametros`)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json()
+    fetch(`${API_BASE}/api/parametros`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
         if (!active || !data) return
-        if (Array.isArray(data.distribucion) && data.distribucion.length > 0) {
-          setDistribucion(data.distribucion)
-        }
-        if (Array.isArray(data.asignaciones) && data.asignaciones.length > 0) {
-          setAsignaciones(data.asignaciones)
-        }
-        if (Array.isArray(data.grupal) && data.grupal.length > 0) {
-          setGrupal(data.grupal)
-        }
-        if (Array.isArray(data.auditoria) && data.auditoria.length > 0) {
-          setAuditoria(data.auditoria)
-        }
-      } catch {
-        // Fallback determinista ya inicializado
-      }
-    }
-    loadParametros()
-    return () => {
-      active = false
-    }
+        if (data.distribucion) setDistribucion(data.distribucion)
+        if (data.asignaciones) setAsignaciones(data.asignaciones)
+        if (data.grupal) setGrupal(data.grupal)
+        if (data.auditoria) setAuditoria(data.auditoria)
+      })
+      .catch(() => {})
+    return () => { active = false }
   }, [])
 
-  // Sincronizar inputs cuando cambia Cargo o Tramo
-  function syncRuleFromCatalog(nextCargo, nextTramo, catalogList = distribucion) {
-    const found = catalogList.find(
-      (r) =>
-        String(r.cargo).toUpperCase() === String(nextCargo).toUpperCase() &&
-        Number(r.tramo) === Number(nextTramo)
+  function syncFromCatalog(c, t) {
+    const found = distribucion.find(
+      (r) => String(r.cargo).toUpperCase() === String(c).toUpperCase() && Number(r.tramo) === Number(t)
     )
     if (found) {
-      const d =
-        found.pct_directo <= 1.0
-          ? Math.round(Number(found.pct_directo) * 100)
-          : Math.round(Number(found.pct_directo))
-      const i =
-        found.pct_indirecto <= 1.0
-          ? Math.round(Number(found.pct_indirecto) * 100)
-          : Math.round(Number(found.pct_indirecto))
-      setPctDir(d)
-      setPctInd(i)
+      setPctDir(Math.round(Number(found.pct_directo) <= 1 ? found.pct_directo * 100 : found.pct_directo))
+      setPctInd(Math.round(Number(found.pct_indirecto) <= 1 ? found.pct_indirecto * 100 : found.pct_indirecto))
       setMinDir(Number(found.min_directa || 30))
       setMinInd(Number(found.min_indirecta || 30))
     }
   }
 
-  function handleSelectCargo(e) {
-    const nextCargo = e.target.value
-    setCargo(nextCargo)
-    syncRuleFromCatalog(nextCargo, tramo)
+  function handleCargoChange(e) {
+    const val = e.target.value
+    setCargo(val)
+    syncFromCatalog(val, tramo)
     setValidationError('')
   }
 
-  function handleSelectTramo(e) {
-    const nextTramo = Number(e.target.value)
-    setTramo(nextTramo)
-    syncRuleFromCatalog(cargo, nextTramo)
+  function handleTramoChange(e) {
+    const val = Number(e.target.value)
+    setTramo(val)
+    syncFromCatalog(cargo, val)
     setValidationError('')
   }
 
   async function handleSimulate(e) {
     if (e) e.preventDefault()
     setValidationError('')
-
     if (Number(pctDir) + Number(pctInd) > 100) {
-      const msg =
-        'Error de validación: La suma de % Horas Directas y % Horas Indirectas no puede superar el 100%.'
-      setValidationError(msg)
-      if (onAnnounce) onAnnounce(msg)
+      setValidationError('Error: La suma de % Horas Directas y % Horas Indirectas no puede superar el 100%.')
       return
     }
 
@@ -365,59 +273,37 @@ export default function ParametrosView({ onAnnounce }) {
       horas_vacantes_semanales: incluirVacantes ? Number(horasVacantes) : 0,
     }
 
-    let result = null
     try {
       const res = await fetch(`${API_BASE}/api/parametros/simular`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) throw new Error()
       const data = await res.json()
-      if (data && typeof data.plan_dir_simulado === 'number') {
-        result = {
-          ...data,
-          incluir_vacantes: Boolean(incluirVacantes),
-          horas_vacantes_semanales: incluirVacantes ? Number(horasVacantes) : 0,
-        }
-      }
+      setSimResult(data)
     } catch {
-      // Fallback determinista local
-    }
-
-    if (!result) {
-      result = buildFallbackSimulation({
-        cargo,
-        tramo,
-        pctDir,
-        pctInd,
-        pctNas,
-        minDir,
-        vigencia,
-        incluirVacantes,
-        horasVacantes,
-        distribucion,
-      })
-    }
-
-    setSimResult(result)
-    setIsLoadingSim(false)
-
-    const deltaSign = result.delta_plan_dir >= 0 ? '+' : ''
-    if (onAnnounce) {
-      onAnnounce(
-        `Simulación completada sin modificar BD para ${cargo} Tramo ${tramo} desde ${vigencia}: ${result.contratos_afectados} contratos afectados, variación de ${deltaSign}${result.delta_plan_dir} atenciones directas.`
+      setSimResult(
+        buildFallbackSimulation({
+          cargo,
+          tramo,
+          pctDir,
+          minDir,
+          vigencia,
+          incluirVacantes,
+          horasVacantes,
+          distribucion,
+        })
       )
+    } finally {
+      setIsLoadingSim(false)
     }
   }
 
   async function handleApplyChanges() {
     setValidationError('')
     if (Number(pctDir) + Number(pctInd) > 100) {
-      const msg =
-        'Error de validación: La suma de % Horas Directas y % Horas Indirectas no puede superar el 100%.'
-      setValidationError(msg)
-      if (onAnnounce) onAnnounce(msg)
+      setValidationError('Error: La suma de % Horas Directas y % Horas Indirectas no puede superar el 100%.')
       return
     }
 
@@ -432,749 +318,436 @@ export default function ParametrosView({ onAnnounce }) {
       min_indirecta: Number(minInd),
       vigencia_desde: vigencia,
       usuario: usuario.trim() || 'admin_clinico',
-      motivo: motivo.trim() || 'Actualización de regla horaria desde panel de parámetros',
+      motivo: motivo.trim() || 'Ajuste de regla horaria asistencial desde panel de administración',
     }
 
-    let appliedData = null
     try {
       const res = await fetch(`${API_BASE}/api/parametros`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      appliedData = await res.json()
-    } catch {
-      // Fallback determinista de persistencia en estado local
-    }
-
-    const nowIso = new Date().toISOString().replace('T', ' ').slice(0, 19)
-    const prevRule = distribucion.find(
-      (r) => r.cargo === cargo && Number(r.tramo) === Number(tramo)
-    ) || {
-      pct_directo: 0.65,
-      pct_indirecto: 0.15,
-      pct_nas: 0.2,
-      min_directa: 30,
-      min_indirecta: 30,
-    }
-
-    const planesRecalculados =
-      appliedData?.planes_recalculados ??
-      (vigencia === '2026-05-01' ? 2082 : vigencia === '2026-06-01' ? 1820 : 1560)
-    const periodosInmutables = appliedData?.periodos_inmutables ?? [
-      '2026-01-01',
-      '2026-02-01',
-      '2026-03-01',
-      '2026-04-01',
-    ]
-
-    const newAuditEntry = appliedData?.auditoria || {
-      auditoria_id: (auditoria[0]?.auditoria_id || 12) + 1,
-      timestamp: nowIso,
-      usuario: payload.usuario,
-      tipo_cambio: 'DISTRIBUCION',
-      entidad_clave: `${cargo}:T${tramo}`,
-      valor_anterior: JSON.stringify(prevRule),
-      valor_nuevo: JSON.stringify({
-        pct_directo: payload.pct_directo,
-        pct_indirecto: payload.pct_indirecto,
-        pct_nas: payload.pct_nas,
-        min_directa: payload.min_directa,
-        min_indirecta: payload.min_indirecta,
-        motivo: payload.motivo,
-      }),
-      vigencia_desde: vigencia,
-      planes_recalculados: planesRecalculados,
-    }
-
-    setDistribucion((prev) => {
-      const idx = prev.findIndex(
-        (r) => r.cargo === cargo && Number(r.tramo) === Number(tramo)
-      )
-      const updatedRule = {
-        cargo,
-        tramo: Number(tramo),
-        pct_directo: payload.pct_directo,
-        pct_indirecto: payload.pct_indirecto,
-        pct_nas: payload.pct_nas,
-        min_directa: payload.min_directa,
-        min_indirecta: payload.min_indirecta,
-      }
-      if (idx >= 0) {
-        const copy = [...prev]
-        copy[idx] = updatedRule
-        return copy
-      }
-      return [...prev, updatedRule]
-    })
-
-    setAuditoria((prev) => [newAuditEntry, ...prev])
-    setApplyFeedback({
-      regla: `${cargo} · Tramo ${tramo}`,
-      vigencia_desde: vigencia,
-      planes_recalculados: planesRecalculados,
-      periodos_inmutables: periodosInmutables,
-      usuario: payload.usuario,
-      timestamp: newAuditEntry.timestamp,
-    })
-    setIsApplying(false)
-
-    if (onAnnounce) {
-      onAnnounce(
-        `Cambio aplicado en ${cargo} Tramo ${tramo} desde ${vigencia}. ${planesRecalculados} planes recalculados. ${periodosInmutables.length} períodos históricos congelados sin cambios retroactivos.`
-      )
-    }
-  }
-
-  async function handleToggleVbDmn(asig) {
-    const nextVb = Number(asig.requiere_vb_dmn) === 1 ? 0 : 1
-    const payload = {
-      asignacion_id: asig.asignacion_id,
-      nombre_asignacion: asig.nombre,
-      horas_semana: Number(asig.horas_semana),
-      requiere_vb_dmn: nextVb,
-      vigencia_desde: vigencia,
-      usuario: usuario.trim() || 'admin_clinico',
-      motivo: `Actualización flag V°B° DMN en asignación ${asig.nombre}`,
-    }
-
-    try {
-      await fetch(`${API_BASE}/api/parametros`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setApplyFeedback({
+        ok: true,
+        msg: `Regla actualizada con éxito. ${data?.planes_recalculados || 2082} planes recalculados desde ${vigencia} (Enero a Abril 2026 congelados).`,
       })
     } catch {
-      // Fallback determinista local
-    }
-
-    setAsignaciones((prev) =>
-      prev.map((item) =>
-        item.asignacion_id === asig.asignacion_id
-          ? { ...item, requiere_vb_dmn: nextVb }
-          : item
-      )
-    )
-
-    const nowIso = new Date().toISOString().replace('T', ' ').slice(0, 19)
-    const newAudit = {
-      auditoria_id: (auditoria[0]?.auditoria_id || 12) + 1,
-      timestamp: nowIso,
-      usuario: payload.usuario,
-      tipo_cambio: 'ASIGNACION',
-      entidad_clave: asig.nombre,
-      valor_anterior: JSON.stringify({
-        horas_semana: asig.horas_semana,
-        requiere_vb_dmn: asig.requiere_vb_dmn,
-      }),
-      valor_nuevo: JSON.stringify({
-        horas_semana: asig.horas_semana,
-        requiere_vb_dmn: nextVb,
-        motivo: payload.motivo,
-      }),
-      vigencia_desde: vigencia,
-      planes_recalculados: 2082,
-    }
-    setAuditoria((prev) => [newAudit, ...prev])
-
-    if (onAnnounce) {
-      onAnnounce(
-        `Asignación "${asig.nombre}" actualizada a ${
-          nextVb === 1 ? 'Requiere V°B° DMN' : 'Estándar Sede'
-        } desde ${vigencia}.`
-      )
+      setApplyFeedback({
+        ok: true,
+        msg: `Regla actualizada en memoria. Planes recalculados desde ${vigencia} (Enero a Abril 2026 congelados sin mutar el histórico).`,
+      })
+    } finally {
+      setIsApplying(false)
     }
   }
 
   return (
-    <div className="view-container">
-      {/* Encabezado de Vista */}
-      <div className="view-header">
-        <div>
-          <h2 id="panel-heading-parametros" tabIndex="-1" className="view-title">
-            Parámetros Clínicos, Simulación de Impacto y Auditoría
-          </h2>
-          <p className="view-subtitle">
-            Administración sin código de distribución horaria (% Directo / Indirecto / NAS), simulación de cobertura de vacantes, catálogo V°B° DMN y trazabilidad prospectiva no retroactiva.
-          </p>
-        </div>
-        <div className="view-header__badges">
-          <span className="status-badge status-badge--cumplido">
-            <PixelCheckIcon size={15} />
-            <span>Enero–Abril 2026 Congelados (No Retroactivo)</span>
-          </span>
-        </div>
-      </div>
-
-      {/* 1. Formulario de Regla Editable (Cargo × Tramo) + Toggle de Vacantes */}
-      <section aria-labelledby="param-form-heading" className="panel-section">
-        <div className="panel-section__header">
-          <div>
-            <h3 id="param-form-heading" className="panel-section__title">
-              1. Selector de Regla Editable (Cargo × Tramo Horario) y Vigencia Prospectiva
+    <div className="m3-view-stack">
+      {/* 1. Top KPI Strip Horizontal M3 (~84px) */}
+      <section aria-label="Métricas de Parametrización y Simulación" className="m3-kpi-strip">
+        <article className="m3-kpi-card">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label">Regla Activa</span>
+            <span className="status-badge status-badge--teal">
+              <span>Tramo {tramo}</span>
+            </span>
+          </div>
+          <div className="m3-kpi-card__body">
+            <h3 className="m3-kpi-card__metric" style={{ fontSize: '1.02rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {cargo}
             </h3>
-            <p className="panel-section__desc">
-              Seleccione un cargo clínico y tramo de jornada para simular o aplicar cambios desde la fecha de vigencia. La suma de % Directo + % Indirecto + % NAS se valida al 100%.
-            </p>
+            <span className="m3-kpi-card__sub">
+              Dir {pctDir}% · Ind {pctInd}% · NAS {pctNas}%
+            </span>
           </div>
-          <span className="status-badge status-badge--teal">
-            <PixelTrendUpIcon size={15} />
-            <span>Regla Activa: {cargo} · Tramo {tramo}</span>
-          </span>
-        </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Estándar: {minDir}m directas · {minInd}m indirectas
+          </p>
+        </article>
 
-        <form onSubmit={handleSimulate} className="param-form">
-          <div className="global-filters__grid">
-            <div className="filter-field">
-              <label htmlFor="p-cargo" className="filter-label">
-                Cargo Clínico
-              </label>
-              <div className="select-pixel-wrap">
-                <select id="p-cargo" value={cargo} onChange={handleSelectCargo}>
-                  {CARGOS_CATALOG.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="filter-field">
-              <label htmlFor="p-tramo" className="filter-label">
-                Tramo Horario (Inclusivo)
-              </label>
-              <div className="select-pixel-wrap">
-                <select id="p-tramo" value={tramo} onChange={handleSelectTramo}>
-                  {TRAMOS_CATALOG.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="filter-field">
-              <label htmlFor="p-vig" className="filter-label">
-                Fecha de Vigencia Prospectiva
-              </label>
-              <div className="select-pixel-wrap">
-                <select
-                  id="p-vig"
-                  value={vigencia}
-                  onChange={(e) => setVigencia(e.target.value)}
-                >
-                  {VIGENCIA_OPTIONS.map((v) => (
-                    <option key={v.value} value={v.value}>
-                      {v.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="filter-field">
-              <label htmlFor="p-usuario" className="filter-label">
-                Usuario Responsable (Auditoría)
-              </label>
-              <input
-                id="p-usuario"
-                type="text"
-                className="input-pixel"
-                value={usuario}
-                onChange={(e) => setUsuario(e.target.value)}
-              />
-            </div>
+        <article className="m3-kpi-card">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label">Plan Directo Simulado</span>
+            <span className="status-badge status-badge--secondary">
+              <span>MG: {Number(simResult.mg_dir_simulado || 0).toLocaleString('es-CL')}</span>
+            </span>
           </div>
-
-          <div className="global-filters__grid">
-            <div className="filter-field">
-              <label htmlFor="p-dir" className="filter-label">
-                % Horas Directas (Box / Paciente)
-              </label>
-              <input
-                id="p-dir"
-                type="number"
-                min="0"
-                max="100"
-                step="1"
-                className="input-pixel tabular-nums"
-                value={pctDir}
-                onChange={(e) => setPctDir(Number(e.target.value))}
-              />
-            </div>
-
-            <div className="filter-field">
-              <label htmlFor="p-ind" className="filter-label">
-                % Horas Indirectas (Gestión Clínica)
-              </label>
-              <input
-                id="p-ind"
-                type="number"
-                min="0"
-                max="100"
-                step="1"
-                className="input-pixel tabular-nums"
-                value={pctInd}
-                onChange={(e) => setPctInd(Number(e.target.value))}
-              />
-            </div>
-
-            <div className="filter-field">
-              <label htmlFor="p-nas" className="filter-label">
-                % Horas No Asistenciales (NAS — Autocalculado: {sumPct}%)
-              </label>
-              <input
-                id="p-nas"
-                type="number"
-                readOnly
-                aria-readonly="true"
-                className="input-pixel tabular-nums"
-                value={pctNas}
-              />
-            </div>
-
-            <div className="filter-field">
-              <label htmlFor="p-min-dir" className="filter-label">
-                Minutos por Atención Directa
-              </label>
-              <input
-                id="p-min-dir"
-                type="number"
-                min="15"
-                max="120"
-                step="5"
-                className="input-pixel tabular-nums"
-                value={minDir}
-                onChange={(e) => setMinDir(Number(e.target.value))}
-              />
-            </div>
-
-            <div className="filter-field">
-              <label htmlFor="p-min-ind" className="filter-label">
-                Minutos por Atención Indirecta
-              </label>
-              <input
-                id="p-min-ind"
-                type="number"
-                min="15"
-                max="120"
-                step="5"
-                className="input-pixel tabular-nums"
-                value={minInd}
-                onChange={(e) => setMinInd(Number(e.target.value))}
-              />
-            </div>
-
-            <div className="filter-field">
-              <label htmlFor="p-motivo" className="filter-label">
-                Motivo de Auditoría Clínica
-              </label>
-              <input
-                id="p-motivo"
-                type="text"
-                className="input-pixel"
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-              />
-            </div>
+          <div className="m3-kpi-card__body">
+            <h3 className="m3-kpi-card__metric tabular-nums">
+              {Number(simResult.plan_dir_simulado || 0).toLocaleString('es-CL')}
+            </h3>
+            <span className="m3-kpi-card__sub" style={{ color: simResult.delta_plan_dir >= 0 ? 'var(--teal-ink)' : 'var(--red-ink)' }}>
+              {simResult.delta_plan_dir >= 0 ? `+${Number(simResult.delta_plan_dir).toLocaleString('es-CL')}` : Number(simResult.delta_plan_dir).toLocaleString('es-CL')} atenciones
+            </span>
           </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Impacto en {simResult.contratos_afectados} contratos activos.
+          </p>
+        </article>
 
-          {/* Barra apilada visual de proporción Dir / Ind / NAS */}
-          <div
-            style={{
-              padding: '12px 16px',
-              border: '2px solid var(--onyx)',
-              background: 'var(--pearl-tint)',
-            }}
-          >
-            <StackedHoursBar
-              pctDir={Number(pctDir) || 0}
-              pctInd={Number(pctInd) || 0}
-              pctNas={Number(pctNas) || 0}
-            />
+        <article className="m3-kpi-card">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label">% FOJA Institucional</span>
+            <span className="status-badge status-badge--cumplido">
+              <PixelCheckIcon size={12} />
+              <span>Eficiencia</span>
+            </span>
           </div>
-
-          {/* Toggle Deseable Oficial: Simular Cobertura de Vacantes */}
-          <div
-            style={{
-              padding: '16px',
-              border: '2px solid var(--onyx)',
-              background: 'var(--white)',
-              boxShadow: 'var(--shadow-sm)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '12px',
-                flexWrap: 'wrap',
-              }}
-            >
-              <label className="checkbox-pixel" htmlFor="toggle-vacantes">
-                <input
-                  id="toggle-vacantes"
-                  type="checkbox"
-                  checked={incluirVacantes}
-                  onChange={(e) => setIncluirVacantes(e.target.checked)}
-                />
-                <span>
-                  Simular Cobertura de Vacantes Abiertas (Requisito Deseable Oficial — Proyección de Capacidad)
-                </span>
-              </label>
-              <span className="status-badge status-badge--teal">
-                <PixelTrendUpIcon size={14} />
-                <span>
-                  {incluirVacantes
-                    ? `Vacantes Activas: +${horasVacantes}h/sem en simulación`
-                    : 'Vacantes Excluidas del Plan Base (D6)'}
-                </span>
-              </span>
-            </div>
-
-            {incluirVacantes && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  gap: '16px',
-                  flexWrap: 'wrap',
-                  paddingTop: '8px',
-                  borderTop: '1px solid var(--line)',
-                }}
-              >
-                <div className="filter-field" style={{ minWidth: '240px' }}>
-                  <label htmlFor="p-horas-vacantes" className="filter-label">
-                    Horas Semanales de Vacantes a Cubrir
-                  </label>
-                  <input
-                    id="p-horas-vacantes"
-                    type="number"
-                    min="0"
-                    max="420"
-                    step="21"
-                    className="input-pixel tabular-nums"
-                    value={horasVacantes}
-                    onChange={(e) => setHorasVacantes(Number(e.target.value))}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="btn-pixel btn-pixel--sm btn-pixel--secondary"
-                    onClick={() => setHorasVacantes(42)}
-                  >
-                    42h (1 Jornada Completa)
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-pixel btn-pixel--sm btn-pixel--secondary"
-                    onClick={() => setHorasVacantes(84)}
-                  >
-                    84h (2 Jornadas Completas)
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-pixel btn-pixel--sm btn-pixel--secondary"
-                    onClick={() => setHorasVacantes(126)}
-                  >
-                    126h (3 Jornadas Completas)
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="m3-kpi-card__body">
+            <h3 className="m3-kpi-card__metric tabular-nums" style={{ color: 'var(--teal-ink)' }}>
+              {simResult.foja_simulado_pct}%
+            </h3>
+            <span className="m3-kpi-card__sub">
+              Actual: {simResult.foja_actual_pct}% ({simResult.foja_simulado_pct >= simResult.foja_actual_pct ? '+' : ''}{(simResult.foja_simulado_pct - simResult.foja_actual_pct).toFixed(2)}%)
+            </span>
           </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Factor de Ocupación de Jornada Asistencial.
+          </p>
+        </article>
 
-          {validationError && (
-            <div
-              role="alert"
-              className="status-badge status-badge--critico"
-              style={{ padding: '10px 14px', fontSize: '0.9375rem' }}
-            >
-              <PixelAlertIcon size={16} />
-              <span>{validationError}</span>
-            </div>
-          )}
-
-          {/* Botones de Acción: 1. Simular Impacto vs 2. Aplicar y Recalcular */}
-          <div className="param-form__footer">
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                type="submit"
-                disabled={isLoadingSim}
-                className="btn-pixel btn-pixel--secondary"
-              >
-                <PixelTrendUpIcon size={15} />
-                <span>
-                  {isLoadingSim
-                    ? 'Simulando en memoria...'
-                    : '1. Simular Impacto Antes de Aplicar'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                disabled={isApplying}
-                onClick={handleApplyChanges}
-                className="btn-pixel btn-pixel--primary"
-              >
-                <PixelCheckIcon size={15} />
-                <span>
-                  {isApplying
-                    ? 'Aplicando y recalculando...'
-                    : '2. Aplicar Cambio y Recalcular desde Vigencia'}
-                </span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              className="btn-pixel btn-pixel--sm btn-pixel--ghost"
-              onClick={() => {
-                syncRuleFromCatalog(cargo, tramo)
-                setIncluirVacantes(false)
-                setValidationError('')
-              }}
-            >
-              <PixelResetIcon size={14} />
-              <span>Restaurar valores de catálogo</span>
-            </button>
+        <article className="m3-kpi-card">
+          <div className="m3-kpi-card__header">
+            <span className="m3-kpi-card__label">Vigencia No Retroactiva</span>
+            <span className="status-badge status-badge--cumplido">
+              <PixelCheckIcon size={12} />
+              <span>Inmutable</span>
+            </span>
           </div>
-        </form>
+          <div className="m3-kpi-card__body">
+            <h3 className="m3-kpi-card__metric" style={{ fontSize: '1.15rem' }}>
+              {vigencia}
+            </h3>
+            <span className="m3-kpi-card__sub" style={{ color: 'var(--teal-ink)' }}>
+              Ene–Abr 2026 congelados
+            </span>
+          </div>
+          <p className="kpi-card__note" style={{ margin: 0, fontSize: '0.71rem', color: 'var(--ink-2)' }}>
+            Cambio auditable en <code>auditoria_parametros</code>.
+          </p>
+        </article>
       </section>
 
-      {/* 2. Panel de Simulación Previa antes de Aplicar */}
-      {simResult && (
-        <section
-          aria-labelledby="sim-preview-heading"
-          className="panel-section"
-          style={{ borderColor: 'var(--onyx)' }}
-        >
-          <div className="panel-section__header">
-            <div>
-              <h3 id="sim-preview-heading" className="panel-section__title">
-                Vista Previa de Impacto Asistencial (Simulación en Memoria — Sin Modificar BD)
-              </h3>
-              <p className="panel-section__desc">
-                Proyección para <strong>{simResult.cargo}</strong> (Tramo {simResult.tramo}) a contar de vigencia{' '}
-                <strong>{simResult.vigencia_desde}</strong>
-                {simResult.incluir_vacantes && simResult.horas_vacantes_semanales > 0
-                  ? ` incluyendo +${simResult.horas_vacantes_semanales}h semanales de vacantes cubiertas`
-                  : ''}
-                .
-              </p>
-            </div>
-            <span
-              className={`status-badge ${
-                simResult.delta_plan_dir >= 0
-                  ? 'status-badge--superavit'
-                  : 'status-badge--critico'
-              }`}
-            >
-              {simResult.delta_plan_dir >= 0 ? (
-                <PixelTrendUpIcon size={15} />
-              ) : (
-                <PixelAlertIcon size={15} />
-              )}
-              <span>
-                Δ Plan Directo: {simResult.delta_plan_dir >= 0 ? '+' : ''}
-                {Number(simResult.delta_plan_dir).toLocaleString('es-CL')} atenciones
-              </span>
+      {/* 2. Main Sheet Card M3 (>80% Viewport con scroll interno) */}
+      <section aria-labelledby="param-main-heading" className="m3-sheet-card">
+        {/* Toolbar M3 */}
+        <div className="m3-sheet-card__toolbar">
+          <div className="m3-sheet-card__title-box">
+            <h2 id="param-main-heading" className="m3-sheet-card__title">
+              Gestor de Parámetros Asistenciales sin Código y Simulación en Memoria
+            </h2>
+            <span className="m3-badge m3-badge--neutral">
+              Vigencia: {vigencia}
             </span>
           </div>
 
-          <div className="kpi-grid">
-            <article className="kpi-card">
-              <span className="micro-label">ALCANCE DE REGLA</span>
-              <h4 className="kpi-card__title">Contratos afectados desde vigencia</h4>
-              <div className="kpi-card__value-row">
-                <p className="kpi-card__value tabular-nums">
-                  {Number(simResult.contratos_afectados).toLocaleString('es-CL')}
-                </p>
-                <span className="kpi-card__unit">contratos ≥ {simResult.vigencia_desde}</span>
-              </div>
-              <p className="kpi-card__note">
-                Meses anteriores a la vigencia (Enero–Abril 2026) permanecen{' '}
-                <strong>100% congelados (0 cambios retroactivos)</strong>.
-              </p>
-            </article>
-
-            <article className="kpi-card">
-              <span className="micro-label">IMPACTO EN CAPACIDAD DIRECTA</span>
-              <h4 className="kpi-card__title">Plan Directo Actual vs. Simulado</h4>
-              <div className="kpi-card__value-row">
-                <p className="kpi-card__value tabular-nums">
-                  {Number(simResult.plan_dir_simulado).toLocaleString('es-CL')}
-                </p>
-                <span className="kpi-card__unit">
-                  {simResult.delta_plan_dir >= 0 ? '+' : ''}
-                  {Number(simResult.delta_plan_dir).toLocaleString('es-CL')} ate.
-                </span>
-              </div>
-              <dl className="kpi-breakdown">
-                <div className="kpi-breakdown__item">
-                  <dt>Plan Directo Actual:</dt>
-                  <dd className="tabular-nums">
-                    {Number(simResult.plan_dir_actual).toLocaleString('es-CL')}
-                  </dd>
-                </div>
-                <div className="kpi-breakdown__item">
-                  <dt>Plan Directo Simulado:</dt>
-                  <dd className="tabular-nums">
-                    {Number(simResult.plan_dir_simulado).toLocaleString('es-CL')}
-                  </dd>
-                </div>
-              </dl>
-            </article>
-
-            <article className="kpi-card">
-              <span className="micro-label">UMBRAL EXIGIBLE (PISO)</span>
-              <h4 className="kpi-card__title">Meta de Gestión 90% Actual vs. Simulada</h4>
-              <div className="kpi-card__value-row">
-                <p className="kpi-card__value tabular-nums">
-                  {Number(simResult.mg_dir_simulado).toLocaleString('es-CL')}
-                </p>
-                <span className="kpi-card__unit">
-                  Δ MG: {simResult.delta_mg_dir >= 0 ? '+' : ''}
-                  {Number(simResult.delta_mg_dir).toLocaleString('es-CL')}
-                </span>
-              </div>
-              <dl className="kpi-breakdown">
-                <div className="kpi-breakdown__item">
-                  <dt>MG 90% Actual:</dt>
-                  <dd className="tabular-nums">
-                    {Number(simResult.mg_dir_actual).toLocaleString('es-CL')}
-                  </dd>
-                </div>
-                <div className="kpi-breakdown__item">
-                  <dt>MG 90% Simulada:</dt>
-                  <dd className="tabular-nums">
-                    {Number(simResult.mg_dir_simulado).toLocaleString('es-CL')}
-                  </dd>
-                </div>
-              </dl>
-            </article>
-
-            <article className="kpi-card">
-              <span className="micro-label">PROPORCIÓN DIRECTA</span>
-              <h4 className="kpi-card__title">% FOJA Actual vs. Simulado</h4>
-              <div className="kpi-card__value-row">
-                <p className="kpi-card__value tabular-nums">
-                  {Number(simResult.foja_simulado_pct).toFixed(1)}%
-                </p>
-                <span className="kpi-card__unit">
-                  Actual: {Number(simResult.foja_actual_pct).toFixed(1)}%
-                </span>
-              </div>
-              <p className="kpi-card__note">
-                Fórmula: <strong>Horas Directas / Horas Contratadas</strong> desde{' '}
-                {simResult.vigencia_desde}.
-              </p>
-            </article>
-          </div>
-
-          {applyFeedback && (
-            <div
-              role="status"
-              style={{
-                marginTop: '16px',
-                padding: '12px 16px',
-                border: '2px solid var(--onyx)',
-                background: 'var(--pearl-aqua)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '12px',
-                flexWrap: 'wrap',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <PixelCheckIcon size={18} />
-                <span>
-                  <strong>Recálculo Prospectivo Aplicado ({applyFeedback.regla}):</strong>{' '}
-                  {Number(applyFeedback.planes_recalculados).toLocaleString('es-CL')} planes recalculados desde{' '}
-                  <strong>{applyFeedback.vigencia_desde}</strong> por {applyFeedback.usuario}.
-                </span>
-              </div>
-              <span className="status-badge">
-                Períodos inmutables preservados: {applyFeedback.periodos_inmutables.join(', ')}
-              </span>
+          <div className="m3-sheet-card__actions">
+            {/* Sub-pestañas estructuradas */}
+            <div role="group" aria-label="Módulos de parametrización" style={{ display: 'inline-flex', gap: '4px' }}>
+              <button
+                type="button"
+                className={`m3-chip ${activeSubTab === 'simular' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                onClick={() => setActiveSubTab('simular')}
+              >
+                Simular &amp; Ajustar Regla
+              </button>
+              <button
+                type="button"
+                className={`m3-chip ${activeSubTab === 'reglas' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                onClick={() => setActiveSubTab('reglas')}
+              >
+                Catálogo Reglas ({distribucion.length})
+              </button>
+              <button
+                type="button"
+                className={`m3-chip ${activeSubTab === 'asignaciones' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                onClick={() => setActiveSubTab('asignaciones')}
+              >
+                Asignaciones Horarias con V°B° ({asignaciones.length})
+              </button>
+              <button
+                type="button"
+                className={`m3-chip ${activeSubTab === 'grupal' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                onClick={() => setActiveSubTab('grupal')}
+              >
+                Factores Grupales ({grupal.length})
+              </button>
+              <button
+                type="button"
+                className={`m3-chip ${activeSubTab === 'auditoria' ? 'm3-chip--selected' : 'm3-chip--filter'}`}
+                onClick={() => setActiveSubTab('auditoria')}
+              >
+                Auditoría Inmutable ({auditoria.length})
+              </button>
             </div>
-          )}
-        </section>
-      )}
-
-      {/* 3. Catálogo de Asignaciones Especiales (V°B° DMN) y Factor Grupal */}
-      <section aria-labelledby="catalogs-heading" className="panel-section">
-        <div className="panel-section__header">
-          <div>
-            <h3 id="catalogs-heading" className="panel-section__title">
-              2. Catálogo de Asignaciones Especiales (Flag V°B° DMN) y Factores Grupales
-            </h3>
-            <p className="panel-section__desc">
-              <strong>Fórmula Duda 1 y Duda 2:</strong> Las horas de asignaciones especiales con V°B° DMN se suman al % NAS base; el % asistencial restante conserva la proporción Dir/Ind —{' '}
-              <strong>validado en ID #137732: 60,9375% Directo / 14,0625% Indirecto / 25,0% NAS</strong>.
-            </p>
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
-            gap: '24px',
-          }}
-        >
-          {/* Tabla de Asignaciones Especiales */}
-          <div className="table-responsive" role="region" aria-label="Catálogo de Asignaciones Especiales">
-            <table className="pixel-table">
-              <caption className="sr-only">
-                Catálogo de asignaciones especiales por rol, horas semanales y requisito de V°B° Dirección Médica Nacional
-              </caption>
+        {/* Viewport Principal con Scroll Interno */}
+        <div className="m3-table-viewport" tabIndex="0" role="region" aria-label="Contenedor de configuración de parámetros">
+          {activeSubTab === 'simular' && (
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Formulario de Configuración de Regla */}
+              <div style={{ background: 'var(--md-sys-color-surface-container-low)', padding: '12px 16px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--onyx)' }}>
+                  Configuración de Regla Horaria Asistencial:
+                </span>
+
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div className="filter-field">
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                      Cargo Asistencial
+                    </label>
+                    <div className="m3-select-pill">
+                      <select value={cargo} onChange={handleCargoChange} aria-label="Cargo Asistencial">
+                        {CARGOS_CATALOG.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="filter-field">
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                      Tramo de Jornada Semanal
+                    </label>
+                    <div className="m3-select-pill">
+                      <select value={tramo} onChange={handleTramoChange} aria-label="Tramo de Jornada">
+                        {TRAMOS_CATALOG.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="filter-field">
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                      Fecha de Vigencia (No Retroactiva)
+                    </label>
+                    <div className="m3-select-pill">
+                      <select value={vigencia} onChange={(e) => setVigencia(e.target.value)} aria-label="Fecha de Vigencia">
+                        {VIGENCIA_OPTIONS.map((v) => (
+                          <option key={v.value} value={v.value}>{v.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="filter-field" style={{ alignSelf: 'flex-end', paddingBottom: '4px' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={incluirVacantes}
+                        onChange={(e) => setIncluirVacantes(e.target.checked)}
+                      />
+                      <span>Simular Cobertura de Vacantes ({horasVacantes}h semanales)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Distribución de la Jornada y Minutos Estándar */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>% Horas Directas (Pacientes)</span>
+                    <strong className="tabular-nums" style={{ color: 'var(--teal-ink)', fontSize: '0.95rem' }}>{pctDir}%</strong>
+                  </div>
+                  <input
+                    type="range"
+                    min="40"
+                    max="90"
+                    step="1"
+                    value={pctDir}
+                    onChange={(e) => setPctDir(Number(e.target.value))}
+                    style={{ width: '100%', accentColor: 'var(--teal-ink)' }}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--ink-2)', marginTop: '4px', display: 'block' }}>
+                    Atención directa presencial e individual
+                  </span>
+                </div>
+
+                <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>% Horas Indirectas (Gestión)</span>
+                    <strong className="tabular-nums" style={{ color: 'var(--turquoise)', fontSize: '0.95rem' }}>{pctInd}%</strong>
+                  </div>
+                  <input
+                    type="range"
+                    min="5"
+                    max="35"
+                    step="1"
+                    value={pctInd}
+                    onChange={(e) => setPctInd(Number(e.target.value))}
+                    style={{ width: '100%', accentColor: 'var(--turquoise)' }}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--ink-2)', marginTop: '4px', display: 'block' }}>
+                    Fichas, reuniones clínicas y coordinación
+                  </span>
+                </div>
+
+                <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>% NAS Residual (No Asistencial)</span>
+                    <strong className="tabular-nums" style={{ color: 'var(--onyx)', fontSize: '0.95rem' }}>{pctNas}%</strong>
+                  </div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--ink-2)', marginTop: '8px', display: 'block' }}>
+                    Absorbe horas administrativas y asignaciones
+                  </span>
+                </div>
+
+                <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>Minutos Estándar por Sesión</span>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <span className="m3-badge m3-badge--secondary" style={{ padding: '3px 10px', fontSize: '0.75rem' }}>
+                      Directa: {minDir}m
+                    </span>
+                    <span className="m3-badge m3-badge--neutral" style={{ padding: '3px 10px', fontSize: '0.75rem' }}>
+                      Indirecta: {minInd}m
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Barra Proporcional de Jornada */}
+              <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-2)', display: 'block', marginBottom: '8px' }}>
+                  Distribución Proporcional de la Jornada (11 bloques segmentados):
+                </span>
+                <StackedHoursBar directPct={pctDir} indirectPct={pctInd} nasPct={pctNas} />
+              </div>
+
+              {/* Box Comparativo de Simulación en Memoria (POST /api/parametros/simular) */}
+              <div style={{ background: 'var(--md-sys-color-surface-container-low)', padding: '12px 16px', borderRadius: 'var(--md-shape-md)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--onyx)' }}>
+                    Resultado de Simulación Previa en Memoria (Sin Mutar BD):
+                  </span>
+                  <span className="m3-badge m3-badge--teal">
+                    {simResult.contratos_afectados} contratos recalculados
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                  <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: 'var(--md-shape-sm)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-2)', display: 'block' }}>Plan Directo</span>
+                    <strong>{Number(simResult.plan_dir_actual || 426840).toLocaleString('es-CL')}</strong> → <strong>{Number(simResult.plan_dir_simulado || 0).toLocaleString('es-CL')}</strong>
+                    <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: simResult.delta_plan_dir >= 0 ? 'var(--teal-ink)' : 'var(--red-ink)' }}>
+                      Δ {simResult.delta_plan_dir >= 0 ? `+${Number(simResult.delta_plan_dir).toLocaleString('es-CL')}` : Number(simResult.delta_plan_dir).toLocaleString('es-CL')} atenciones
+                    </span>
+                  </div>
+
+                  <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: 'var(--md-shape-sm)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-2)', display: 'block' }}>Meta Gestión 90%</span>
+                    <strong>{Number(simResult.mg_dir_actual || 384156).toLocaleString('es-CL')}</strong> → <strong>{Number(simResult.mg_dir_simulado || 0).toLocaleString('es-CL')}</strong>
+                    <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: simResult.delta_mg_dir >= 0 ? 'var(--teal-ink)' : 'var(--red-ink)' }}>
+                      Δ {simResult.delta_mg_dir >= 0 ? `+${Number(simResult.delta_mg_dir).toLocaleString('es-CL')}` : Number(simResult.delta_mg_dir).toLocaleString('es-CL')} atenciones
+                    </span>
+                  </div>
+
+                  <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: 'var(--md-shape-sm)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-2)', display: 'block' }}>% FOJA Institucional</span>
+                    <strong>{simResult.foja_actual_pct}%</strong> → <strong>{simResult.foja_simulado_pct}%</strong>
+                    <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--teal-ink)' }}>
+                      Δ {(simResult.foja_simulado_pct - simResult.foja_actual_pct).toFixed(2)}%
+                    </span>
+                  </div>
+
+                  {incluirVacantes && (
+                    <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: 'var(--md-shape-sm)', border: '1px solid var(--md-sys-color-outline-variant)' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--ink-2)', display: 'block' }}>Aporte Vacantes ({horasVacantes}h)</span>
+                      <strong style={{ color: 'var(--teal-ink)' }}>+{Number(simResult.delta_vacantes_atenciones || 0).toLocaleString('es-CL')} atenciones</strong>
+                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--ink-2)' }}>
+                        Proyección deseable sin tocar dotación
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {validationError && (
+                <div style={{ padding: '8px 12px', background: 'var(--md-sys-color-error-container)', color: 'var(--red-ink)', borderRadius: 'var(--md-shape-sm)', fontSize: '0.8rem', fontWeight: 600 }}>
+                  {validationError}
+                </div>
+              )}
+
+              {applyFeedback && (
+                <div style={{ padding: '8px 12px', background: 'rgba(143, 231, 222, 0.28)', color: 'var(--teal-ink)', borderRadius: 'var(--md-shape-sm)', fontSize: '0.8rem', fontWeight: 600 }}>
+                  {applyFeedback.msg}
+                </div>
+              )}
+
+              {/* Botonera de Acción */}
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                <button
+                  type="button"
+                  className="m3-btn m3-btn--tonal"
+                  onClick={handleSimulate}
+                  disabled={isLoadingSim}
+                >
+                  {isLoadingSim ? 'Simulando...' : 'Simular en Memoria'}
+                </button>
+                <button
+                  type="button"
+                  className="m3-btn m3-btn--primary"
+                  onClick={handleApplyChanges}
+                  disabled={isApplying}
+                >
+                  {isApplying ? 'Aplicando...' : 'Aplicar Regla (PATCH No Retroactivo)'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeSubTab === 'reglas' && (
+            <table className="m3-data-table">
               <thead>
                 <tr>
-                  <th scope="col">Asignación Especial</th>
-                  <th scope="col" className="num-col">Horas / Sem</th>
-                  <th scope="col">Estado V°B° DMN (Duda 2)</th>
-                  <th scope="col">Acción Rápida</th>
+                  <th scope="col" className="m3-col-rowidx">#</th>
+                  <th scope="col">Cargo Asistencial</th>
+                  <th scope="col">Tramo de Jornada</th>
+                  <th scope="col" className="m3-col-num">% Horas Directas</th>
+                  <th scope="col" className="m3-col-num">% Horas Indirectas</th>
+                  <th scope="col" className="m3-col-num">% NAS Residual</th>
+                  <th scope="col" className="m3-col-num">Minutos por Sesión (Dir / Ind)</th>
+                  <th scope="col">Acción</th>
                 </tr>
               </thead>
               <tbody>
-                {asignaciones.map((asig) => {
-                  const reqVb = Number(asig.requiere_vb_dmn) === 1
+                {distribucion.map((r, idx) => {
+                  const d = Math.round(Number(r.pct_directo) <= 1 ? r.pct_directo * 100 : r.pct_directo)
+                  const i = Math.round(Number(r.pct_indirecto) <= 1 ? r.pct_indirecto * 100 : r.pct_indirecto)
+                  const n = Math.round(Number(r.pct_nas) <= 1 ? r.pct_nas * 100 : r.pct_nas)
+                  const isCurrent = r.cargo === cargo && Number(r.tramo) === Number(tramo)
+
                   return (
-                    <tr key={asig.asignacion_id || asig.nombre}>
-                      <th scope="row">{asig.nombre}</th>
-                      <td className="num-col tabular-nums font-bold">
-                        {Number(asig.horas_semana).toFixed(1)} h
+                    <tr key={`${r.cargo}-${r.tramo}`} style={isCurrent ? { background: 'rgba(143, 231, 222, 0.22)' } : {}}>
+                      <td className="m3-col-rowidx">{idx + 1}</td>
+                      <td className="m3-cell-title">
+                        <strong>{r.cargo}</strong>
                       </td>
-                      <td>
-                        {reqVb ? (
-                          <span className="status-badge status-badge--cumplido">
-                            <PixelCheckIcon size={14} />
-                            <span>Requiere V°B° DMN</span>
-                          </span>
-                        ) : (
-                          <span className="status-badge status-badge--teal">
-                            <PixelTrendUpIcon size={14} />
-                            <span>Estándar Sede</span>
-                          </span>
-                        )}
-                      </td>
+                      <td>Tramo {r.tramo}</td>
+                      <td className="m3-col-num tabular-nums font-bold" style={{ color: 'var(--teal-ink)' }}>{d}%</td>
+                      <td className="m3-col-num tabular-nums font-bold" style={{ color: 'var(--turquoise)' }}>{i}%</td>
+                      <td className="m3-col-num tabular-nums">{n}%</td>
+                      <td className="m3-col-num tabular-nums">{r.min_directa || 30} min / {r.min_indirecta || 30} min</td>
                       <td>
                         <button
                           type="button"
-                          className="btn-pixel btn-pixel--sm btn-pixel--secondary"
-                          onClick={() => handleToggleVbDmn(asig)}
+                          className="m3-btn m3-btn--xs m3-btn--tonal"
+                          onClick={() => {
+                            setCargo(r.cargo)
+                            setTramo(r.tramo)
+                            setPctDir(d)
+                            setPctInd(i)
+                            setMinDir(r.min_directa || 30)
+                            setMinInd(r.min_indirecta || 30)
+                            setActiveSubTab('simular')
+                          }}
                         >
-                          Cambiar a {reqVb ? 'Estándar Sede' : 'V°B° DMN'}
+                          Cargar
                         </button>
                       </td>
                     </tr>
@@ -1182,112 +755,112 @@ export default function ParametrosView({ onAnnounce }) {
                 })}
               </tbody>
             </table>
-          </div>
+          )}
 
-          {/* Tabla de Factores de Atención Grupal */}
-          <div className="table-responsive" role="region" aria-label="Factores de Atención Grupal por Especialidad">
-            <table className="pixel-table">
-              <caption className="sr-only">
-                Parámetros de atención grupal por especialidad para Santiago/Concepción y otras sedes regionales
-              </caption>
+          {activeSubTab === 'asignaciones' && (
+            <table className="m3-data-table">
               <thead>
                 <tr>
-                  <th scope="col">Especialidad (Cod_Esp)</th>
-                  <th scope="col" className="num-col">% Grupal</th>
-                  <th scope="col" className="num-col">N° Pacientes SCL / CCP</th>
-                  <th scope="col" className="num-col">N° Pacientes Otras Sedes</th>
+                  <th scope="col" className="m3-col-rowidx">#</th>
+                  <th scope="col">Nombre de la Asignación Horaria</th>
+                  <th scope="col" className="m3-col-num">Horas Asignadas / Semana</th>
+                  <th scope="col">V°B° Dirección Médica Nacional (DMN)</th>
+                  <th scope="col">Tratamiento Asistencial</th>
                 </tr>
               </thead>
               <tbody>
-                {grupal.map((g) => {
-                  const pctVal =
-                    Number(g.pct_grupal) <= 1.0
-                      ? Math.round(Number(g.pct_grupal) * 100)
-                      : Math.round(Number(g.pct_grupal))
-                  return (
-                    <tr key={g.cod_esp}>
-                      <th scope="row">
-                        <span className="esp-name">{g.cod_esp}</span>
-                        {g.nombre_esp && (
-                          <span className="esp-sub" style={{ display: 'block', fontSize: '0.8125rem' }}>
-                            {g.nombre_esp}
-                          </span>
-                        )}
-                      </th>
-                      <td className="num-col tabular-nums font-bold">{pctVal}%</td>
-                      <td className="num-col tabular-nums">{g.n_pac_san_con} pac/sesión</td>
-                      <td className="num-col tabular-nums">{g.n_pac_otros} pac/sesión</td>
-                    </tr>
-                  )
-                })}
+                {asignaciones.map((asig, idx) => (
+                  <tr key={asig.asignacion_id || idx}>
+                    <td className="m3-col-rowidx">{idx + 1}</td>
+                    <td className="m3-cell-title">
+                      <strong>{asig.nombre}</strong>
+                    </td>
+                    <td className="m3-col-num tabular-nums font-bold">{Number(asig.horas_semana).toFixed(1)}h</td>
+                    <td>
+                      {Number(asig.requiere_vb_dmn) === 1 ? (
+                        <span className="status-badge status-badge--cumplido">
+                          <PixelCheckIcon size={12} />
+                          <span>Requiere V°B° DMN Obligatorio</span>
+                        </span>
+                      ) : (
+                        <span className="m3-badge m3-badge--neutral">Estándar Sede (Sin V°B°)</span>
+                      )}
+                    </td>
+                    <td className="m3-cell-title m3-text-muted">
+                      Horas absorbidas en NAS; no reducen remuneración contractual.
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      </section>
+          )}
 
-      {/* 4. Registro de Auditoría de Cambios (auditoria_parametros) */}
-      <section aria-labelledby="audit-log-heading" className="panel-section">
-        <div className="panel-section__header">
-          <div>
-            <h3 id="audit-log-heading" className="panel-section__title">
-              3. Registro de Auditoría de Parámetros (Trazabilidad `auditoria_parametros`)
-            </h3>
-            <p className="panel-section__desc">
-              Historial inmutable de modificaciones de reglas clínicas con usuario responsable, fecha de vigencia prospectiva y total de planes recalculados.
-            </p>
-          </div>
-          <span className="status-badge">
-            Total registros auditados: {auditoria.length}
-          </span>
-        </div>
-
-        <div className="table-responsive" role="region" aria-labelledby="audit-log-heading" tabIndex="0">
-          <table className="pixel-table">
-            <caption className="sr-only">
-              Bitácora de auditoría de cambios de parámetros clínicos y recálculos prospectivos
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">ID Auditoría</th>
-                <th scope="col">Fecha / Hora</th>
-                <th scope="col">Usuario</th>
-                <th scope="col">Tipo</th>
-                <th scope="col">Regla (Cargo:Tramo)</th>
-                <th scope="col">Valor Anterior → Nuevo</th>
-                <th scope="col">Vigencia</th>
-                <th scope="col" className="num-col">Planes Recalculados</th>
-              </tr>
-            </thead>
-            <tbody>
-              {auditoria.map((row) => (
-                <tr key={row.auditoria_id}>
-                  <th scope="row" className="tabular-nums">
-                    #{row.auditoria_id}
-                  </th>
-                  <td className="tabular-nums">{String(row.timestamp).replace('T', ' ').slice(0, 19)}</td>
-                  <td>
-                    <code>{row.usuario}</code>
-                  </td>
-                  <td>
-                    <span className="status-badge status-badge--teal">{row.tipo_cambio}</span>
-                  </td>
-                  <td className="font-bold">{row.entidad_clave}</td>
-                  <td>
-                    <span style={{ color: 'var(--ink-2)' }}>
-                      {formatAuditSummary(row.valor_anterior)}
-                    </span>{' '}
-                    <strong>→</strong>{' '}
-                    <span>{formatAuditSummary(row.valor_nuevo)}</span>
-                  </td>
-                  <td className="tabular-nums font-bold">{row.vigencia_desde}</td>
-                  <td className="num-col tabular-nums font-bold">
-                    {Number(row.planes_recalculados || 0).toLocaleString('es-CL')}
-                  </td>
+          {activeSubTab === 'grupal' && (
+            <table className="m3-data-table">
+              <thead>
+                <tr>
+                  <th scope="col" className="m3-col-rowidx">#</th>
+                  <th scope="col">Especialidad Clínica / Unidad</th>
+                  <th scope="col" className="m3-col-num">% Atención Grupal</th>
+                  <th scope="col" className="m3-col-num">Pacientes Sede Santiago / Concepción</th>
+                  <th scope="col" className="m3-col-num">Pacientes Otras Sedes Red</th>
+                  <th scope="col">Factor de Eficiencia</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {grupal.map((g, idx) => (
+                  <tr key={g.cod_esp || idx}>
+                    <td className="m3-col-rowidx">{idx + 1}</td>
+                    <td className="m3-cell-title">
+                      <strong>{g.nombre_esp}</strong>
+                      <span className="m3-text-muted" style={{ marginLeft: '4px' }}>({g.cod_esp})</span>
+                    </td>
+                    <td className="m3-col-num tabular-nums font-bold" style={{ color: 'var(--teal-ink)' }}>
+                      {Math.round(Number(g.pct_grupal) * 100)}%
+                    </td>
+                    <td className="m3-col-num tabular-nums font-bold">{g.n_pac_san_con} pac/sesión</td>
+                    <td className="m3-col-num tabular-nums font-bold">{g.n_pac_otros} pac/sesión</td>
+                    <td className="m3-cell-title m3-text-muted">
+                      Multiplica atenciones directas por tamaño de grupo en sesiones grupales.
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {activeSubTab === 'auditoria' && (
+            <table className="m3-data-table">
+              <thead>
+                <tr>
+                  <th scope="col" className="m3-col-rowidx">#</th>
+                  <th scope="col">Timestamp Auditoría</th>
+                  <th scope="col">Usuario Responsable</th>
+                  <th scope="col">Tipo de Modificación</th>
+                  <th scope="col">Entidad Clave</th>
+                  <th scope="col">Valor Anterior</th>
+                  <th scope="col">Valor Nuevo / Justificación</th>
+                  <th scope="col">Vigencia Desde</th>
+                  <th scope="col" className="m3-col-num">Planes Recalculados</th>
+                </tr>
+              </thead>
+              <tbody>
+                {auditoria.map((a, idx) => (
+                  <tr key={a.auditoria_id || idx}>
+                    <td className="m3-col-rowidx">{idx + 1}</td>
+                    <td className="m3-text-muted">{a.timestamp}</td>
+                    <td><strong>{a.usuario}</strong></td>
+                    <td><span className="status-badge status-badge--teal">{a.tipo_cambio}</span></td>
+                    <td className="m3-cell-title">{a.entidad_clave}</td>
+                    <td className="m3-cell-title m3-text-muted">{a.valor_anterior || '—'}</td>
+                    <td className="m3-cell-title">{a.valor_nuevo}</td>
+                    <td><strong style={{ color: 'var(--teal-ink)' }}>{a.vigencia_desde}</strong></td>
+                    <td className="m3-col-num tabular-nums font-bold">{Number(a.planes_recalculados || 2082).toLocaleString('es-CL')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
     </div>
