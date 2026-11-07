@@ -125,3 +125,16 @@ CREATE TABLE IF NOT EXISTS sic_real (
     ate_ind_reales INTEGER NOT NULL CHECK (ate_ind_reales >= 0),
     UNIQUE (persona_id, it, periodo)
 );
+
+CREATE TABLE IF NOT EXISTS auditoria_parametros (
+    auditoria_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    usuario TEXT NOT NULL DEFAULT 'admin',
+    tipo_cambio TEXT NOT NULL,
+    entidad_clave TEXT NOT NULL,
+    valor_anterior TEXT,
+    valor_nuevo TEXT,
+    vigencia_desde TEXT NOT NULL,
+    planes_recalculados INTEGER NOT NULL DEFAULT 0
+);
+

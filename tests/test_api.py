@@ -114,6 +114,58 @@ def test_db_path(tmp_path_factory):
         ],
     )
 
+    # 7. Insertar catálogos de parámetros base para /api/parametros
+    con.executemany(
+        """
+        INSERT INTO parametros_distribucion (
+            cargo, tramo, pct_directo, pct_indirecto, pct_nas, min_directa, min_indirecta
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("MEDICO FISIATRA", 1, 0.65, 0.15, 0.20, 30, 30),
+            ("KINESIOLOGO", 1, 0.75, 0.10, 0.15, 30, 30),
+        ],
+    )
+    con.execute(
+        """
+        INSERT INTO parametros_grupal (cod_esp, pct_grupal, n_pac_san_con, n_pac_otros)
+        VALUES ('AS', 0.10, 5.0, 4.0)
+        """
+    )
+    con.execute(
+        """
+        INSERT INTO asignaciones (nombre, horas_semana, requiere_vb_dmn)
+        VALUES ('Líder Equipo', 4.0, 1)
+        """
+    )
+    con.executemany(
+        "INSERT INTO semanas_habiles (anio, mes, semanas) VALUES (?, ?, ?)",
+        [(2026, 4, 4.2), (2026, 5, 3.8)],
+    )
+
+    # 8. Insertar rechazados y deltas de prueba para lote 1
+    con.executemany(
+        """
+        INSERT INTO rechazados (lote_id, fila_origen, motivo, detalle, payload)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        [
+            (1, 12, "NEGATIVE_HS", "Horas Semanales negativas: -10", '{"PersonaId": 9001, "Horas Semanales": -10}'),
+            (1, 15, "NEGATIVE_HS", "Horas Semanales negativas: -5", '{"PersonaId": 9002, "Horas Semanales": -5}'),
+            (1, 20, "BAD_IT", "IT 999 no existe en catálogo", '{"PersonaId": 9003, "IT": 999}'),
+        ],
+    )
+    con.executemany(
+        """
+        INSERT INTO deltas (lote_id, periodo, persona_id, it, tipo_delta, valor_anterior, valor_nuevo, detalle)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (1, "2026-05-01", 1001, 131, "CAMBIO_JORNADA", "40.0h", "42.0h", "Cambio de jornada 40h a 42h"),
+            (1, "2026-05-01", 1002, 81, "BAJA", "44.0h (IT 81)", "No figura en dotación", "Baja respecto a 2026-04-01"),
+        ],
+    )
+
     con.commit()
     con.close()
     return str(db_file)
@@ -333,3 +385,202 @@ def test_sla_latencia_endpoints(client):
 
         assert resp.status_code == 200
         assert elapsed_ms < 300.0, f"Endpoint {ep} excedió los 300ms SLA ({elapsed_ms:.2f}ms)"
+
+
+def test_lote_rechazados_y_reporte(client):
+    """
+    GET /api/lotes/{lote_id}/rechazados y /reporte-rechazos:
+    Verifica el desglose por regla de validación y la descarga del reporte.
+    """
+    resp = client.get("/api/lotes/1/rechazados")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["lote_id"] == 1
+    assert data["total_rechazados"] == 3
+    assert len(data["rechazados"]) == 3
+
+    resumen = {r["motivo"]: r["cantidad"] for r in data["resumen_reglas"]}
+    assert resumen["NEGATIVE_HS"] == 2
+    assert resumen["BAD_IT"] == 1
+
+    # Lote inexistente -> 404
+    resp_404 = client.get("/api/lotes/999/rechazados")
+    assert resp_404.status_code == 404
+
+    # Descarga de reporte Excel/CSV
+    resp_rep = client.get("/api/lotes/1/reporte-rechazos")
+    assert resp_rep.status_code == 200
+    assert len(resp_rep.content) > 0
+
+
+def test_deltas_antes_despues_y_meses_congelados(client):
+    """
+    GET /api/deltas verifica el resumen de cambios, comparativa por instituto y profesional,
+    y que los meses previos al corte figuren como congelados/inmutables (#47).
+    """
+    resp = client.get("/api/deltas?periodo_corte=2026-05-01")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert data["periodo_corte"] == "2026-05-01"
+    assert data["periodo_anterior"] == "2026-04-01"
+    assert data["resumen"]["CAMBIO_JORNADA"] == 1
+    assert data["resumen"]["BAJA"] == 1
+    assert len(data["deltas"]) == 2
+
+    # Comparativa por instituto
+    comp_it = {r["it"]: r for r in data["comparativa_institutos"]}
+    assert 131 in comp_it
+    assert comp_it[131]["horas_antes"] == 40.0
+    assert comp_it[131]["horas_despues"] == 42.0
+    assert comp_it[131]["delta_horas"] == 2.0
+
+    # Comparativa por profesional
+    comp_prof = {(r["persona_id"], r["it"]): r for r in data["comparativa_profesionales"]}
+    assert (1001, 131) in comp_prof
+    assert comp_prof[(1001, 131)]["tipo_delta"] == "CAMBIO_JORNADA"
+    assert comp_prof[(1002, 81)]["tipo_delta"] == "BAJA"
+
+    # Meses congelados (< 2026-05-01)
+    assert len(data["meses_congelados"]) == 1
+    abril = data["meses_congelados"][0]
+    assert abril["periodo"] == "2026-04-01"
+    assert abril["total_contratos"] == 2
+    assert abril["plan_dir_total"] == 330
+    assert abril["inmutable"] is True
+
+
+def test_get_parametros(client):
+    """GET /api/parametros retorna distribucion, grupal, asignaciones, semanas_habiles y auditoria."""
+    resp = client.get("/api/parametros")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert "distribucion" in data
+    assert "grupal" in data
+    assert "asignaciones" in data
+    assert "semanas_habiles" in data
+    assert "auditoria" in data
+
+    fisiatra_t1 = next(
+        r for r in data["distribucion"] if r["cargo"] == "MEDICO FISIATRA" and r["tramo"] == 1
+    )
+    assert fisiatra_t1["pct_directo"] == 0.65
+    assert fisiatra_t1["min_directa"] == 30
+
+
+def test_simular_parametros_no_muta_bd(client):
+    """
+    POST /api/parametros/simular calcula el impacto proyectado desde vigencia_desde
+    sin modificar parametros_distribucion ni planes en la base de datos.
+    """
+    payload = {
+        "cargo": "MEDICO FISIATRA",
+        "tramo": 1,
+        "pct_directo": 0.75,
+        "pct_indirecto": 0.10,
+        "pct_nas": 0.15,
+        "min_directa": 30,
+        "min_indirecta": 30,
+        "vigencia_desde": "2026-05-01",
+        "incluir_vacantes": False,
+        "horas_vacantes_semanales": 0.0,
+    }
+    resp = client.post("/api/parametros/simular", json=payload)
+    assert resp.status_code == 200
+    sim = resp.json()
+
+    assert sim["vigencia_desde"] == "2026-05-01"
+    assert sim["contratos_afectados"] == 1
+    assert sim["plan_dir_actual"] == 140
+    # 42h * 0.75 * 60 / 30 = 63 ate_dir_sem -> floor(63 * 3.8) = 239
+    assert sim["plan_dir_simulado"] == 239
+    assert sim["delta_plan_dir"] == 99
+    assert sim["foja_simulado_pct"] == 75.0
+
+    # Verificar que la BD NO fue modificada por la simulación
+    resp_params = client.get("/api/parametros").json()
+    fisiatra_t1 = next(
+        r for r in resp_params["distribucion"] if r["cargo"] == "MEDICO FISIATRA" and r["tramo"] == 1
+    )
+    assert fisiatra_t1["pct_directo"] == 0.65
+
+    resp_kpi_mayo = client.get("/api/kpis?periodo=2026-05-01").json()
+    assert resp_kpi_mayo["plan_directo_mensual"] == 140
+
+
+def test_patch_parametros_recalculo_vigencia_y_auditoria(client):
+    """
+    PATCH /api/parametros (#21):
+    1. Valida porcentajes (rechaza suma != 100% con 400).
+    2. Actualiza parametros_distribucion en SQLite.
+    3. Recalcula planes SOLO para periodo >= 2026-05-01.
+    4. Mantiene 100% intactos los planes de periodos < 2026-05-01 (abril = 150 y 180).
+    5. Registra la auditoría en auditoria_parametros con usuario, timestamp y valores antes/después.
+    """
+    # 1. Validación rechaza suma inválida
+    bad_resp = client.patch(
+        "/api/parametros",
+        json={
+            "cargo": "MEDICO FISIATRA",
+            "tramo": 1,
+            "pct_directo": 0.80,
+            "pct_indirecto": 0.30,
+            "pct_nas": 0.20,
+            "vigencia_desde": "2026-05-01",
+        },
+    )
+    assert bad_resp.status_code == 400
+
+    # 2. Capturar estado de abril (< 2026-05-01) antes del PATCH
+    abril_antes = client.get("/api/plan?periodo=2026-04-01").json()["items"]
+    kpi_abril_antes = client.get("/api/kpis?periodo=2026-04-01").json()
+
+    # 3. Aplicar PATCH válido desde 2026-05-01
+    patch_resp = client.patch(
+        "/api/parametros",
+        json={
+            "cargo": "MEDICO FISIATRA",
+            "tramo": 1,
+            "pct_directo": 0.75,
+            "pct_indirecto": 0.10,
+            "pct_nas": 0.15,
+            "min_directa": 30,
+            "min_indirecta": 30,
+            "vigencia_desde": "2026-05-01",
+            "usuario": "dra_soto",
+            "motivo": "Aumento de dedicación directa desde mayo 2026",
+        },
+    )
+    assert patch_resp.status_code == 200
+    res = patch_resp.json()
+
+    assert res["status"] == "ok"
+    assert res["planes_recalculados"] == 1
+    assert "2026-04-01" in res["periodos_inmutables"]
+    assert res["regla_actualizada"]["pct_directo"] == 0.75
+    assert res["auditoria"]["usuario"] == "dra_soto"
+    assert res["auditoria"]["tipo_cambio"] == "DISTRIBUCION"
+    assert res["auditoria"]["entidad_clave"] == "MEDICO FISIATRA:T1"
+    assert res["auditoria"]["vigencia_desde"] == "2026-05-01"
+
+    # 4. Verificar que mayo (>= 2026-05-01) se recalculó (239 atenciones directas, MG 215)
+    kpi_mayo_despues = client.get("/api/kpis?periodo=2026-05-01").json()
+    assert kpi_mayo_despues["plan_directo_mensual"] == 239
+    assert kpi_mayo_despues["meta_gestion_mensual"] == 215
+    assert kpi_mayo_despues["foja_pct"] == 75.0
+
+    # 5. Verificar NO-RETROACTIVIDAD: abril (< 2026-05-01) permanece 100% idéntico
+    abril_despues = client.get("/api/plan?periodo=2026-04-01").json()["items"]
+    kpi_abril_despues = client.get("/api/kpis?periodo=2026-04-01").json()
+    assert abril_despues == abril_antes
+    assert kpi_abril_despues == kpi_abril_antes
+    assert kpi_abril_despues["plan_directo_mensual"] == 330
+
+    # 6. Verificar que el registro quedó persistido en GET /api/parametros -> auditoria
+    params_after = client.get("/api/parametros").json()
+    assert len(params_after["auditoria"]) >= 1
+    ult_audit = params_after["auditoria"][0]
+    assert ult_audit["usuario"] == "dra_soto"
+    assert ult_audit["planes_recalculados"] == 1
+
