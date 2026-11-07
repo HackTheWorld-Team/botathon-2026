@@ -293,6 +293,7 @@ Estos son los KPIs que el dashboard debe calcular; cada uno con su fórmula exac
 
 - [ ] Filtros globales: instituto · mes · cargo · especialidad.
 - [ ] KPIs de [§5](#5-kpis-definiciones-formales).
+- [ ] Spec completa de UI (paleta AA, pixel-zen, one-page 5 pestañas): [`docs/UI_SPEC.md`](docs/UI_SPEC.md) — fuente de verdad del frontend.
 
 ### 6.4 Accesibilidad WCAG 2.1 AA (diferenciador — construir desde la primera pantalla)
 
@@ -417,9 +418,9 @@ gantt
 | Rol | Foco | Issues | Derivable a IA ahora |
 |---|---|---|---|
 | **Dev A** — cosmolinda (RPA/datos) | bot híbrido: worker.py, Studio, carpetas, rechazos, deltas/42h, ingesta SIC | `#11 #13 #15 #28` | — |
-| **Dev B** — isabelrosemc (producto/cálculo) | motor + backend + React WCAG | `#17 #18 #20 #21 #22 #24 #25 #26 #27` | — |
-| **Líder** — Axel-DaMage | decisiones/ADR, QA accesibilidad, guion/lámina, datos demo, dispatch, merges, **dueño de la cola IA** | `#29 #30 #31 #32 #33 #34` | — |
-| **Cola IA** (`ai-worker`) | trabajos derivados a worker IA — **sin reviewers humanos asignados**; revisión solo bajo demanda del líder | `#12 #14 #16 #19 #23 #29` | merge por líder |
+| **Dev B** — isabelrosemc (producto/cálculo) | motor + backend + React WCAG | `#17 #18 #20 #21 #24 #25 #26 #27 #47` | — |
+| **Líder** — Axel-DaMage | decisiones/ADR, QA accesibilidad, guion/lámina, datos demo, dispatch, merges, **dueño de la cola IA** | `#29 #30 #31 #32 #33 #34 #49` | — |
+| **Cola IA** (`ai-worker`) | trabajos derivados a worker IA — **sin reviewers humanos asignados**; revisión solo bajo demanda del líder | `#12 #14 #16 #19 #23 #29 #46 #48` | merge por líder |
 
 **Flujo de delegación:** issue listo → label `ready-to-implement` → lo ejecuta el humano asignado o un worker IA (registrando en `docs/AI_USAGE_LOG.md`) sobre `feat/issue-<n>` → revisión cruzada (el otro dev) → merge por líder.
 
@@ -459,6 +460,7 @@ gantt
 | D8 | Hora exacta de pitch (3 min) y demo (5 min) el sábado | L | Ahora | **Resuelta**: confirmado 10:00 sáb (congelar 08:00 · video 08:30 · ensayo 09:00–09:40) |
 | D9 | Material de demo generado con IA generativa (Claude vs Gemini) | L | 07:00 | **Pendiente** elección del modelo; **declarar uso de IA en el pitch** (obligatorio doc. oficial) |
 | D10 | Modo de trabajo de Dev A con Blue Prism | Equipo | Ahora | **Resuelta**: **manual + híbrido** — proceso pequeño en Studio con guía; lógica pesada en `bot/worker.py` (Python testado); sin MCP ni Playwright (no aplicables) |
+| D11 | Lenguaje visual y arquitectura de la UI | L | 02:45 | **Resuelta**: pixel-zen minimal (geometría pixel, texto Roboto NO pixel), one-page 5 pestañas (ARIA Tabs + deep-link hash), filtros siempre visibles — [ADR-007](docs/ARCHITECTURE.md) · [`docs/UI_SPEC.md`](docs/UI_SPEC.md) |
 
 ---
 
@@ -470,6 +472,7 @@ botathon-2026/
 ├── requerimientos_oficiales.pdf         ← enunciado oficial (renombrado desde A.pdf)
 ├── informe_tecnico_requerimientos.md    ← fórmulas §3, arquitectura §4, guion §5 (fuente de verdad)
 ├── desafio_cada_hora_cuenta.md          ← documento oficial del desafío (16 h, obligatorios, rúbrica 9 dims)
+├── docs/UI_SPEC.md                      ← spec de UI: paleta AA, pixel-zen, one-page, WCAG (D11)
 ├── Nac - Base contratos x mes.xlsx      ← INPUT BUK (Dotacion_2026: 3.123×19, ene–jul, header fila 2)
 ├── Nac - Planificación Asistencial x mes.xlsx ← 8 hojas (476×205 + reglas)
 ├── SIC_Atenciones_Reales.xlsx           ← SIC sintético (3.123 filas, perfil balanceado, seed 42)

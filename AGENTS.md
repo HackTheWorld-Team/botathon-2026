@@ -48,6 +48,7 @@ El doc. oficial exige **declarar el uso de IA**. Por tanto, todo agente que prod
 2. **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — cuando el trabajo implique una decisión técnica (nueva o cambio): añadir entrada ADR-lite (contexto → decisión → consecuencias → quién decidió).
 3. **[`README.md`](README.md)** — cuando cambie contexto del desafío, KPIs, backlog o decisiones (§12).
 4. Si el agente NO puede actualizar docs (limitación), debe dejarlo explícito en su respuesta final para que el líder lo registre.
+5. **Sesiones de especificación (specs de UI, reglas, etc.):** al cerrar la sesión, TODO lo acordado queda materializado en el MISMO trabajo — docs (spec/ADR/log) + issues creados o ajustados. **Ninguna spec vive solo en la conversación.** El agente propone; el líder confirma cada decisión antes de ejecutar.
 
 Regla práctica: **prompt terminado = docs al día**. Un PR/commit sin su fila en AI_USAGE_LOG.md está incompleto.
 

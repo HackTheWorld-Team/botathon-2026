@@ -5,10 +5,11 @@
 | ID | Fecha | Decisión | Estado |
 |---|---|---|---|
 | D1 | 07-nov ~00:30 | Stack: React (Vite) + FastAPI + SQLite | Vigente |
-| D2 | 07-nov ~00:30 | BD: SQLite (PostgreSQL solo producción) | Vigente |
+| D2 | 07-nov ~00:30 | BD: SQLite (PostgreSQL solo producción) | Vigente (reforzada por ADR-006) |
 | D7 | 07-nov ~01:00 | **100% local en PC del líder; VM del evento descartada** | Vigente (v2) |
 | D10 | 07-nov ~01:00 | Blue Prism manual + híbrido (worker Python) | Vigente |
 | D9 | 07-nov ~00:30 | Demo con IA generativa (Claude vs Gemini por decidir) | Pendiente elección |
+| D11 | 07-nov ~02:45 | UI: lenguaje pixel-zen + one-page 5 pestañas + tipografía no pixel (ADR-007) | Vigente |
 
 ---
 
@@ -47,6 +48,20 @@
 - **Consecuencias:** trabajo paralelo sin conflictos; pruebas por módulo; el contrato de datos (esquema SQLite + esquema JSON de worker) es la única dependencia cruzada y vive documentado.
 - **Decidió:** Líder — 07-nov ~01:00.
 
+## ADR-006 — NoSQL evaluado y descartado; SQLite se mantiene (refuerza D2)
+
+- **Contexto:** en fase early, el líder planteó migrar la BD a NoSQL ante posible cambio de datos/ingesta "a futuro en producción".
+- **Decisión:** mantener SQLite. Argumentos: dominio relacional (PK `[PersonaId+IT+Periodo]`, catálogos, deltas, integridad referencial `IT`/`Cod_Esp` es requerimiento puntado §6.1); stack pandas-céntrico (`df.to_sql` trivial); la tolerancia a formatos desconocidos ya vive en el worker (parsea→valida→normaliza→rechaza), no en el storage; sin server extra en el PC del líder (modo de fallo nuevo para la demo en vivo, R2).
+- **Consecuencias:** la flexibilidad de ingesta se resuelve en la capa correcta (worker + JSON de publicación, ADR-005); path a producción documentado = PostgreSQL (SQL→SQL); material de pitch: "evaluamos NoSQL y lo descartamos por integridad referencial".
+- **Decidió:** Líder con análisis del agente — 07-nov ~02:00.
+
+## ADR-007 — Lenguaje visual pixel-zen, one-page y tipografía no pixel (D11)
+
+- **Contexto:** sesión de especificación de UI con el líder (~02:00–02:45). Deseo: minimalismo zen con toque pixel geométrico y máxima legibilidad/accesibilidad; paleta de 5 colores aportada (white/pearl-aqua/turquoise/onyx/racing-red).
+- **Decisión:** ver [`UI_SPEC.md`](UI_SPEC.md) como fuente de verdad. Resumen: lo pixel vive SOLO en geometría (bordes rectos, sombras duras sin blur, barras segmentadas, iconos pixel-art, chips cuadrados, grid 4px, transiciones `steps()` con reduced-motion) — **cero fuentes pixel en texto** (Roboto única, tabular-nums). One-page con shell persistente (marca + statusbar del bot + filtros globales SIEMPRE visibles) y 5 pestañas ARIA Tabs sin router de librería (deep-link hash nativo: pushState tabs / replaceState filtros). Paleta con derivados AA obligatorios (`#0a6b63`, `#c62828`; turquoise prohibido como texto/focus sobre blanco; gradientes descartados). Contraste verificado programáticamente sobre mock. Issues: shell #46, split #27→#47, lotes #48, auditoría WCAG #49, enmienda tokens en #23, cierre #22.
+- **Consecuencias:** identidad distintiva sin sacrificar WCAG 2.1 AA (diferenciador de rúbrica); shell desacoplado de las vistas (ADR-005); URLs reproducibles para recovery en demo (R2), ensayos y video respaldo.
+- **Decidió:** Líder en sesión de specs — 07-nov ~02:45.
+
 ---
 
-*(Nuevas decisiones se agregan como ADR-006, ADR-007… con fecha y quién decidió.)*
+*(Nuevas decisiones se agregan como ADR-008, ADR-009… con fecha y quién decidió.)*
