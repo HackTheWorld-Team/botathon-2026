@@ -8,6 +8,7 @@
 | D2 | 07-nov ~00:30 | BD: SQLite (PostgreSQL solo producción) | Vigente |
 | D7 | 07-nov ~01:00 | **100% local en PC del líder; VM del evento descartada** | Vigente (v2) |
 | D10 | 07-nov ~01:00 | Blue Prism manual + híbrido (worker Python) | Vigente |
+| D11 | 07-nov ~02:15 | Motor asistencial desacoplado en funciones puras + caché SQLite | Vigente |
 | D9 | 07-nov ~00:30 | Demo con IA generativa (Claude vs Gemini por decidir) | Pendiente elección |
 
 ---
@@ -47,6 +48,13 @@
 - **Consecuencias:** trabajo paralelo sin conflictos; pruebas por módulo; el contrato de datos (esquema SQLite + esquema JSON de worker) es la única dependencia cruzada y vive documentado.
 - **Decidió:** Líder — 07-nov ~01:00.
 
+## ADR-006 — Arquitectura del motor asistencial (D11, funciones puras + caché SQLite)
+
+- **Contexto:** el motor de cálculo (issues #17 y #18) requiere replicar las fórmulas del §4 con exactitud absoluta: tramos inclusivos, absorción de asignaciones especiales sobre el % NAS basal, ajuste no retroactivo de 42h (mayo 2026), factor grupal y doble redondeo truncado piso (`floor`).
+- **Decisión:** estructurar `backend/motor.py` como un conjunto de funciones puras independientes de I/O (`tramo_inclusivo`, `ajustar_tope_42h`, `calcular_distribucion_final`, `calcular_atenciones_semanales`, `ajustar_atencion_grupal`, `calcular_semanas_efectivas`, `calcular_plan_mensual`, `calcular_foja`), complementadas por la clase `CatalogosMotor` para lectura en memoria desde SQLite (`backend/db.sqlite`).
+- **Consecuencias:** desacoplamiento absoluto de BD para pruebas unitarias instantáneas; interoperabilidad directa tanto para el bot worker (CLI offline) como para los endpoints de FastAPI; validación matemática 100% en verde con `tests/test_motor.py`.
+- **Decidió:** Dev B (isabelrosemc) asistida por Antigravity — 07-nov ~02:15.
+
 ---
 
-*(Nuevas decisiones se agregan como ADR-006, ADR-007… con fecha y quién decidió.)*
+*(Nuevas decisiones se agregan como ADR-007, ADR-008… con fecha y quién decidió.)*

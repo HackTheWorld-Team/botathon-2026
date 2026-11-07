@@ -419,11 +419,13 @@ gantt
 | **Dev A** — cosmolinda (RPA/datos) | bot híbrido: worker.py, Studio, carpetas, rechazos, deltas/42h, ingesta SIC | `#11 #13 #15 #28` | — |
 | **Dev B** — isabelrosemc (producto/cálculo) | motor + backend + React WCAG | `#17 #18 #20 #21 #22 #24 #25 #26 #27` | — |
 | **Líder** — Axel-DaMage | decisiones/ADR, QA accesibilidad, guion/lámina, datos demo, dispatch, merges, **dueño de la cola IA** | `#29 #30 #31 #32 #33 #34` | — |
-| **Cola IA** (`ai-worker`) | trabajos derivados a worker IA (opencode/GLM), revisados por el dev del área | `#12 #14` (revisa Dev A) · `#16 #19 #23` (revisa Dev B) | en ejecución |
+| **Cola IA** (`ai-worker`) | trabajos derivados a worker IA — **sin reviewers humanos asignados**; revisión solo bajo demanda del líder | `#12 #14 #16 #19 #23 #29` | merge por líder |
 
 **Flujo de delegación:** issue listo → label `ready-to-implement` → lo ejecuta el humano asignado o un worker IA (registrando en `docs/AI_USAGE_LOG.md`) sobre `feat/issue-<n>` → revisión cruzada (el otro dev) → merge por líder.
 
 **Orden crítico de arranque:** Dev A: `#13 → #11 → #15 → #14 → #12 → #28` · Dev B: `#16 → #17 → #18 → #19 → #20 → #21 → #23/#24 → #25–#27` · Líder: `#29 → #30 → #31 → QA → #32`.
+
+**Etiquetas de prioridad (07-nov ~01:40):** `prio:p0` = cabezas de cadena, hacer ya (#11 #13 #16 #17 #29) · `prio:p1` = Must siguientes (#14 #15 #18 #19 #20 #23 #24 #25 #30 #32 #33) · `prio:p2` = Should o programados al final (#12 #21 #26 #27 #28 #31 #34) · `prio:p3` = Could (#22). MoSCoW del §8 como labels `must`/`should`/`could` en cada issue (épicas incluidas). Los 7 derivables a IA ya (#12 #13 #14 #16 #19 #23 #29) pasaron el DoR del pipeline (título conventional-commit + acceptance criteria) y están en cola (`scc:queued`, assignee = líder).
 
 ---
 
